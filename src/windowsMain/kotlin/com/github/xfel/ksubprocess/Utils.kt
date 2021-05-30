@@ -15,13 +15,13 @@
  */
 package com.github.xfel.ksubprocess
 
+import io.ktor.utils.io.core.*
 import com.github.xfel.ksubprocess.io.WindowsException
 import kotlinx.cinterop.convert
-import kotlinx.io.core.ExperimentalIoApi
 import platform.windows.*
 
 // close a windows handle and optionally report errors
-@ExperimentalIoApi
+@OptIn(ExperimentalIoApi::class)
 internal fun HANDLE?.close(ignoreErrors: Boolean = false) {
     if (this != INVALID_HANDLE_VALUE) {
         if (CloseHandle(this) == 0 && !ignoreErrors) {

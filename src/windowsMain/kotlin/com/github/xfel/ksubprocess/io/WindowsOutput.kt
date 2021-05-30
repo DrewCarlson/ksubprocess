@@ -15,19 +15,17 @@
  */
 package com.github.xfel.ksubprocess.io
 
+import io.ktor.utils.io.bits.*
+import io.ktor.utils.io.core.*
 import com.github.xfel.ksubprocess.close
-import kotlinx.io.core.AbstractOutput
-import kotlinx.io.core.ExperimentalIoApi
-import kotlinx.io.core.IoBuffer
-import kotlinx.io.core.Output
 import platform.windows.HANDLE
 
 @Suppress("FunctionName")
-@ExperimentalIoApi
+@OptIn(ExperimentalIoApi::class)
 fun Output(handle: HANDLE?): Output = WindowsOutputForFileHandle(handle)
 
-@ExperimentalIoApi
-private class WindowsOutputForFileHandle(val handle: HANDLE?) : AbstractOutput() {
+@OptIn(ExperimentalIoApi::class)
+private class WindowsOutputForFileHandle(val handle: HANDLE?) : Output() {
     private var closed = false
     override fun closeDestination() {
         if (closed) return
@@ -35,10 +33,7 @@ private class WindowsOutputForFileHandle(val handle: HANDLE?) : AbstractOutput()
         handle.close()
     }
 
-    override fun flush(buffer: IoBuffer) {
-        while (buffer.canRead()) {
-            write(handle, buffer)
-        }
+    override fun flush(source: Memory, offset: Int, length: Int) {
+        write(handle, source, length)
     }
-
 }

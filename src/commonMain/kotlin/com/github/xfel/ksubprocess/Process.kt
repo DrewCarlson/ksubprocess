@@ -15,8 +15,7 @@
  */
 package com.github.xfel.ksubprocess
 
-import kotlinx.io.core.Input
-import kotlinx.io.core.Output
+import io.ktor.utils.io.core.*
 import kotlin.time.Duration
 import kotlin.time.ExperimentalTime
 

@@ -13,23 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-@file:UseExperimental(ExperimentalIoApi::class)
+@file:OptIn(ExperimentalIoApi::class)
 
 package com.github.xfel.ksubprocess
 
 import com.github.xfel.ksubprocess.iop.fork_and_run
+import io.ktor.utils.io.core.*
+import io.ktor.utils.io.core.Input
+import io.ktor.utils.io.errors.*
+import io.ktor.utils.io.streams.*
 import kotlinx.cinterop.*
-import kotlinx.io.core.ExperimentalIoApi
-import kotlinx.io.core.Input
-import kotlinx.io.core.Output
-import kotlinx.io.errors.PosixException
-import kotlinx.io.streams.Input
-import kotlinx.io.streams.Output
 import platform.posix.*
 import kotlin.native.concurrent.freeze
-import kotlin.time.Duration
-import kotlin.time.ExperimentalTime
-import kotlin.time.MonoClock
+import kotlin.time.*
 
 // safely close an fd
 private fun Int.closeFd() {
@@ -159,10 +155,10 @@ actual class Process actual constructor(args: ProcessArguments) {
                 RedirectFds(-1, stdout.writeFd)
             else
                 args.stderr.openFds("stderr")
-            stdin = args.stdin.openFds("sdtin")
+            stdin = args.stdin.openFds("stdin")
 
             val pid = memScoped {
-                // covnvert c lists
+                // convert c lists
                 val arguments = toCStrVector(args.arguments)
                 val env = args.environment?.let { toCStrVector(it.map { e -> "${e.key}=${e.value}" }) }
 
@@ -268,7 +264,7 @@ actual class Process actual constructor(args: ProcessArguments) {
     actual fun waitFor(timeout: Duration): Int? {
         require(timeout.isPositive()) { "Timeout must be positive!" }
         // there is no good blocking solution, so use an active loop with sleep in between.
-        val clk = MonoClock
+        val clk = TimeSource.Monotonic
         val deadline = clk.markNow() + timeout
         while (true) {
             checkState(false)
@@ -319,6 +315,4 @@ actual class Process actual constructor(args: ProcessArguments) {
         if (stderrFd != -1) Input(stderrFd)
         else null
     }
-
 }
-

@@ -15,9 +15,7 @@
  */
 package com.github.xfel.ksubprocess
 
-import kotlinx.io.charsets.Charset
-import kotlinx.io.charsets.Charsets
-import kotlinx.io.errors.IOException
+import io.ktor.utils.io.charsets.*
 import kotlin.time.Duration
 import kotlin.time.ExperimentalTime
 
@@ -106,7 +104,7 @@ class ExecArgumentsBuilder : ProcessArgumentBuilder() {
  * @throws ProcessException if another process error occurs
  * @throws IOException if an IO error occurs in the pipes
  */
-@UseExperimental(ExperimentalTime::class)
+@OptIn(ExperimentalTime::class)
 inline fun exec(builder: ExecArgumentsBuilder.() -> Unit): CommunicateResult {
     val rab = ExecArgumentsBuilder()
     rab.builder()

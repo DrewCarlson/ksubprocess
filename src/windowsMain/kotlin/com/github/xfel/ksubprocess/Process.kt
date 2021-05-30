@@ -13,17 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-@file:UseExperimental(ExperimentalIoApi::class)
+@file:OptIn(ExperimentalIoApi::class)
 
 package com.github.xfel.ksubprocess
 
 import com.github.xfel.ksubprocess.io.Input
 import com.github.xfel.ksubprocess.io.Output
 import com.github.xfel.ksubprocess.io.WindowsException
+import io.ktor.utils.io.core.*
 import kotlinx.cinterop.*
-import kotlinx.io.core.ExperimentalIoApi
-import kotlinx.io.core.Input
-import kotlinx.io.core.Output
 import platform.windows.*
 import kotlin.time.Duration
 import kotlin.time.ExperimentalTime
@@ -43,7 +41,7 @@ private data class RedirectFds(val readFd: HANDLE?, val writeFd: HANDLE?) {
 private fun Redirect.openFds(stream: String): RedirectFds = when (this) {
     Redirect.Null -> memScoped {
         val saAttr = alloc<SECURITY_ATTRIBUTES>()
-        saAttr.nLength = SECURITY_ATTRIBUTES.size.convert()
+        saAttr.nLength = sizeOf<SECURITY_ATTRIBUTES>().convert()
         saAttr.bInheritHandle = TRUE
         saAttr.lpSecurityDescriptor = NULL
 
@@ -71,7 +69,7 @@ private fun Redirect.openFds(stream: String): RedirectFds = when (this) {
         val hWritePipe = alloc<HANDLEVar>()
 
         val saAttr = alloc<SECURITY_ATTRIBUTES>()
-        saAttr.nLength = SECURITY_ATTRIBUTES.size.convert()
+        saAttr.nLength = sizeOf<SECURITY_ATTRIBUTES>().convert()
         saAttr.bInheritHandle = TRUE
         saAttr.lpSecurityDescriptor = NULL
 
@@ -94,7 +92,7 @@ private fun Redirect.openFds(stream: String): RedirectFds = when (this) {
     }
     is Redirect.Read -> memScoped {
         val saAttr = alloc<SECURITY_ATTRIBUTES>()
-        saAttr.nLength = SECURITY_ATTRIBUTES.size.convert()
+        saAttr.nLength = sizeOf<SECURITY_ATTRIBUTES>().convert()
         saAttr.bInheritHandle = TRUE
         saAttr.lpSecurityDescriptor = NULL
 
@@ -117,7 +115,7 @@ private fun Redirect.openFds(stream: String): RedirectFds = when (this) {
     }
     is Redirect.Write -> memScoped {
         val saAttr = alloc<SECURITY_ATTRIBUTES>()
-        saAttr.nLength = SECURITY_ATTRIBUTES.size.convert()
+        saAttr.nLength = sizeOf<SECURITY_ATTRIBUTES>().convert()
         saAttr.bInheritHandle = TRUE
         saAttr.lpSecurityDescriptor = NULL
 
@@ -140,7 +138,7 @@ private fun Redirect.openFds(stream: String): RedirectFds = when (this) {
         }
         RedirectFds(INVALID_HANDLE_VALUE, fd)
     }
-    Redirect.Stdout -> throw IllegalStateException("Redirect.Stdout must be handled separately.")
+    Redirect.Stdout -> error("Redirect.Stdout must be handled separately.")
 }
 
 actual class Process actual constructor(actual val args: ProcessArguments) {
@@ -180,7 +178,7 @@ actual class Process actual constructor(actual val args: ProcessArguments) {
                     val envStrs = env.map { e -> "${e.key}=${e.value}" }
 
                     // allocate block memory
-                    val block = allocArray<WCHARVar>(envStrs.sumBy { it.length + 1 } + 1)
+                    val block = allocArray<WCHARVar>(envStrs.sumOf { it.length + 1 } + 1)
                     // fill block with strings
                     var cursor: CArrayPointer<WCHARVar>? = block
                     for (envStr in envStrs) {
@@ -197,7 +195,7 @@ actual class Process actual constructor(actual val args: ProcessArguments) {
                 val piProcInfo = alloc<PROCESS_INFORMATION>()
                 // populate startupinfo
                 val siStartInfo = alloc<STARTUPINFOW>()
-                siStartInfo.cb = STARTUPINFOW.size.convert()
+                siStartInfo.cb = sizeOf<STARTUPINFOW>().convert()
                 siStartInfo.hStdError = stderr.writeFd
                 siStartInfo.hStdOutput = stdout.writeFd
                 siStartInfo.hStdInput = stdin.readFd
@@ -297,7 +295,7 @@ actual class Process actual constructor(actual val args: ProcessArguments) {
 
     @ExperimentalTime
     actual fun waitFor(timeout: Duration): Int? =
-        when (WaitForSingleObject(childProcessHandle, timeout.toLongMilliseconds().convert())) {
+        when (WaitForSingleObject(childProcessHandle, timeout.inWholeMilliseconds.convert())) {
             WAIT_FAILED -> throw ProcessException(
                 "Error waiting for child process",
                 WindowsException.fromLastError(functionName = "TerminateProcess")

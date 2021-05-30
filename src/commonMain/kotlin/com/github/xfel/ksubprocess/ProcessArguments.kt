@@ -15,9 +15,6 @@
  */
 package com.github.xfel.ksubprocess
 
-//import kotlinx.io.charsets.Charset
-//import kotlinx.io.charsets.Charsets
-
 /**
  * Subprocess pipe redirection settings.
  */

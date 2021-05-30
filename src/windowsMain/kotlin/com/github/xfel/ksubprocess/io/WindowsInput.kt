@@ -16,18 +16,16 @@
 package com.github.xfel.ksubprocess.io
 
 import com.github.xfel.ksubprocess.close
-import kotlinx.io.core.AbstractInput
-import kotlinx.io.core.ExperimentalIoApi
-import kotlinx.io.core.Input
-import kotlinx.io.core.IoBuffer
+import io.ktor.utils.io.bits.*
+import io.ktor.utils.io.core.*
 import platform.windows.HANDLE
 
 @Suppress("FunctionName")
-@ExperimentalIoApi
+@OptIn(ExperimentalIoApi::class)
 fun Input(handle: HANDLE?): Input = WindowsInputForFileHandle(handle)
 
-@ExperimentalIoApi
-private class WindowsInputForFileHandle(val handle: HANDLE?) : AbstractInput() {
+@OptIn(ExperimentalIoApi::class)
+private class WindowsInputForFileHandle(val handle: HANDLE?) : Input() {
     private var closed = false
     override fun closeSource() {
         if (closed) return
@@ -35,17 +33,7 @@ private class WindowsInputForFileHandle(val handle: HANDLE?) : AbstractInput() {
         handle.close()
     }
 
-    override fun fill(): IoBuffer? {
-        val buffer = pool.borrow()
-        buffer.reserveEndGap(IoBuffer.ReservedSize)
-
-        val size = read(handle, buffer)
-        if (size == SZERO) { // EOF
-            buffer.release(pool)
-            return null
-        }
-
-        return buffer
+    override fun fill(destination: Memory, offset: Int, length: Int): Int {
+        return read(handle, destination, length).toInt()
     }
-
 }

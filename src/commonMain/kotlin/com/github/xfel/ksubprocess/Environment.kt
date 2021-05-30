@@ -118,7 +118,7 @@ class EnvironmentBuilder(init: Map<String, String> = Environment) : AbstractMuta
 
         override fun hashCode(): Int {
             // use upper case hash code if case insensitive
-            return if (Environment.caseInsensitive) value.toUpperCase().hashCode() else value.hashCode()
+            return if (Environment.caseInsensitive) value.uppercase().hashCode() else value.hashCode()
         }
     }
 

@@ -20,9 +20,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
-import kotlin.time.ExperimentalTime
-import kotlin.time.measureTimedValue
-import kotlin.time.seconds
+import kotlin.time.*
 
 /**
  * Tests for the [exec] function.
@@ -130,7 +128,7 @@ class ExecTests {
                 arg("20")
 
                 // timeout way earlier with grace
-                timeout = 3.seconds
+                timeout = Duration.seconds(3)
 
                 // disable check so we can verify the code manually
                 check = false
@@ -138,9 +136,9 @@ class ExecTests {
         }
 
         // assertions on timing are always wonky, but we can probably guarantee this
-        assertTrue(time < 6.seconds, "Timeout worked.")
+        assertTrue(time < Duration.seconds(6), "Timeout worked.")
 
         // NOTE: cannot check return codes, since those are platform dependent
-        // NOTE: cannot test the forcful termination generally, since it's platform dependent.
+        // NOTE: cannot test the forceful termination generally, since it's platform dependent.
     }
 }

@@ -15,10 +15,8 @@
  */
 package com.github.xfel.ksubprocess
 
-import kotlinx.io.charsets.Charset
-import kotlinx.io.charsets.Charsets
-import kotlinx.io.core.writeText
-import kotlinx.io.errors.IOException
+import io.ktor.utils.io.charsets.*
+import io.ktor.utils.io.core.*
 import kotlin.time.Duration
 import kotlin.time.ExperimentalTime
 
@@ -72,7 +70,7 @@ data class CommunicateResult(
  * @throws ProcessException if another process error occurs
  * @throws IOException if an IO error occurs in the pipes
  */
-@UseExperimental(ExperimentalTime::class)
+@OptIn(ExperimentalTime::class)
 fun Process.communicate(
     input: String = "",
     charset: Charset = Charsets.UTF_8,

@@ -15,13 +15,11 @@
  */
 package com.github.xfel.ksubprocess.io
 
+import io.ktor.utils.io.core.*
 import kotlinx.cinterop.alloc
 import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.ptr
 import kotlinx.cinterop.value
-import kotlinx.io.core.ExperimentalIoApi
-import kotlinx.io.core.readText
-import kotlinx.io.core.writeText
 import platform.windows.*
 import kotlin.test.Test
 import kotlin.test.assertEquals

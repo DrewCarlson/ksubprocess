@@ -1,18 +1,18 @@
 plugins {
-    id 'kotlin'
+    kotlin("jvm")
 }
 
 repositories {
-    jcenter()
     mavenCentral()
 }
 
 dependencies {
-    compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
+    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
 }
 
+/*
 jar {
     from {
         configurations.compile.collect { it.isDirectory() ? it : zipTree(it) }
     }
-}
+}*/
