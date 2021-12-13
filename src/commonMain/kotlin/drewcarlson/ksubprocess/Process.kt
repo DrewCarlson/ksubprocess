@@ -17,7 +17,6 @@ package drewcarlson.ksubprocess
 
 import io.ktor.utils.io.core.*
 import kotlin.time.Duration
-import kotlin.time.ExperimentalTime
 
 /**
  * A child process.
@@ -53,7 +52,6 @@ constructor(args: ProcessArguments) {
      * @param timeout wait timeout duration
      * @return exit code or null if the process is still running
      */
-    @ExperimentalTime
     fun waitFor(timeout: Duration): Int?
 
     // TODO some kind of coroutine support

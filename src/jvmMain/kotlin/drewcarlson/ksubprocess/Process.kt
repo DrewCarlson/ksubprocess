@@ -21,7 +21,6 @@ import java.io.File
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 import kotlin.time.Duration
-import kotlin.time.ExperimentalTime
 import java.lang.Process as JProcess
 
 actual class Process actual constructor(actual val args: ProcessArguments) {
@@ -92,7 +91,6 @@ actual class Process actual constructor(actual val args: ProcessArguments) {
         return impl.waitFor()
     }
 
-    @ExperimentalTime
     actual fun waitFor(timeout: Duration): Int? {
         // perform wait
         val terminated = impl.waitFor(timeout.inWholeMilliseconds, TimeUnit.MILLISECONDS)

@@ -24,8 +24,7 @@ import io.ktor.utils.io.core.*
 import kotlinx.cinterop.*
 import platform.windows.*
 import kotlin.native.concurrent.*
-import kotlin.time.Duration
-import kotlin.time.ExperimentalTime
+import kotlin.time.*
 
 // read and write fds for a pipe. Also used to store other fds for convenience.
 private data class RedirectFds(val readFd: HANDLE?, val writeFd: HANDLE?) {
@@ -298,7 +297,7 @@ actual class Process actual constructor(actual val args: ProcessArguments) {
         else -> exitCode ?: throw IllegalStateException("Waited for process, but it's still alive!")
     }
 
-    @ExperimentalTime
+    @OptIn(ExperimentalTime::class)
     actual fun waitFor(timeout: Duration): Int? =
         when (WaitForSingleObject(childProcessHandle, timeout.inWholeMilliseconds.convert())) {
             WAIT_FAILED -> throw ProcessException(

@@ -16,8 +16,7 @@
 package drewcarlson.ksubprocess
 
 import io.ktor.utils.io.charsets.*
-import kotlin.time.Duration
-import kotlin.time.ExperimentalTime
+import kotlin.time.*
 
 /**
  * Builder for the [exec] method.
@@ -46,7 +45,6 @@ class ExecArgumentsBuilder : ProcessArgumentBuilder() {
      *
      * @see communicate
      */
-    @ExperimentalTime
     var timeout: Duration? = null
         set(value) {
             require(value == null || value.isPositive()) { "Timeout must be positive!" }
@@ -62,7 +60,6 @@ class ExecArgumentsBuilder : ProcessArgumentBuilder() {
      *
      * @see communicate
      */
-    @ExperimentalTime
     var killTimeout: Duration? = null
         set(value) {
             require(value == null || (value.isPositive() || value == Duration.ZERO)) {
@@ -94,17 +91,12 @@ class ExecArgumentsBuilder : ProcessArgumentBuilder() {
  *
  * Delegates to [Process], [communicate] and [CommunicateResult.check] as needed.
  *
- * NOTE: The timeout functions require the experimental kotlin time API. However, this function can be perfectly used
- * without them if the timeout parameters are left alone (set to `null`). Therefore, it is not marked with
- * [ExperimentalTime].
- *
  * @param builder builder for method arguments
  * @return result of communicate
  * @throws ProcessExitException if `check = true` and the process didn't terminate normally.
  * @throws ProcessException if another process error occurs
  * @throws IOException if an IO error occurs in the pipes
  */
-@OptIn(ExperimentalTime::class)
 inline fun exec(builder: ExecArgumentsBuilder.() -> Unit): CommunicateResult {
     val rab = ExecArgumentsBuilder()
     rab.builder()

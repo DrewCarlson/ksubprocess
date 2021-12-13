@@ -116,7 +116,7 @@ class ExecTests {
         }
     }
 
-    @ExperimentalTime
+    @OptIn(ExperimentalTime::class)
     @Test
     @JsName("testTimeout")
     fun `Timeout and termination`() {

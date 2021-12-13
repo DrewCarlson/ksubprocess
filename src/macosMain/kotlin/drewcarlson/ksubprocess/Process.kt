@@ -153,7 +153,7 @@ actual class Process actual constructor(actual val args: ProcessArguments)  {
         return task.terminationStatus
     }
 
-    @ExperimentalTime
+    @OptIn(ExperimentalTime::class)
     actual fun waitFor(timeout: Duration): Int? {
         require(timeout.isPositive()) { "Timeout must be positive!" }
         // there is no good blocking solution, so use an active loop with sleep in between.

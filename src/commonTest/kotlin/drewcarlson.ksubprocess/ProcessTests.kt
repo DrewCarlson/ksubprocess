@@ -208,7 +208,6 @@ class ProcessTests {
         assertTrue(actAbsWD?.endsWith(wd) ?: false, "Working directory $actAbsWD should be $wd")
     }
 
-    @ExperimentalTime
     @Test
     @JsName("testWaitForTimeout")
     fun `waitFor with timeout`() {

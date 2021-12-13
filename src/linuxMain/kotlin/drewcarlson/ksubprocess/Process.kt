@@ -260,7 +260,7 @@ actual class Process actual constructor(
         return _exitStatus
     }
 
-    @ExperimentalTime
+    @OptIn(ExperimentalTime::class)
     actual fun waitFor(timeout: Duration): Int? {
         require(timeout.isPositive()) { "Timeout must be positive!" }
         // there is no good blocking solution, so use an active loop with sleep in between.

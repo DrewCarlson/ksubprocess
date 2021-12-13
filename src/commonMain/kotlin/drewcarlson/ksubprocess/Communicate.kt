@@ -17,9 +17,7 @@ package drewcarlson.ksubprocess
 
 import io.ktor.utils.io.charsets.*
 import io.ktor.utils.io.core.*
-import kotlin.time.Duration
-import kotlin.time.ExperimentalTime
-
+import kotlin.time.*
 
 /**
  * Result tuple of Process.communicate().
@@ -56,9 +54,6 @@ data class CommunicateResult(
  * timeout for graceful termination can be set, afterwards the child will be [killed][Process.kill]. The kill timeout
  * can also be set to [Duration.ZERO] to skip the graceful termination attempt and kill the child directly.
  *
- * NOTE: The timeout functions require the experimental kotlin time API. However, this function can be perfectly used
- * without them if the timeout parameters are left alone (set to `null`). Therefore, it is not marked with
- * [ExperimentalTime].
  *
  * @param input stdin pipe input. Ignored if stdin isn't a pipe
  * @param charset charset to use for text communication. Defaults to UTF-8
@@ -70,7 +65,6 @@ data class CommunicateResult(
  * @throws ProcessException if another process error occurs
  * @throws IOException if an IO error occurs in the pipes
  */
-@OptIn(ExperimentalTime::class)
 fun Process.communicate(
     input: String = "",
     charset: Charset = Charsets.UTF_8,
