@@ -19,7 +19,6 @@ import io.ktor.utils.io.core.*
 import io.ktor.utils.io.errors.*
 import io.ktor.utils.io.streams.*
 import kotlinx.cinterop.*
-import kotlinx.coroutines.*
 import platform.Foundation.*
 import platform.posix.*
 import kotlin.native.concurrent.*
@@ -90,12 +89,9 @@ private fun Redirect.openFds(stream: String): RedirectFds = when (this) {
 }
 
 @OptIn(ExperimentalIoApi::class)
-actual class Process actual constructor(args: ProcessArguments)  {
+actual class Process actual constructor(actual val args: ProcessArguments)  {
 
     private val task = NSTask()
-
-    actual val args: ProcessArguments = args.freeze()
-
 
     internal val stdoutFd: Int
     internal val stderrFd: Int
@@ -111,13 +107,15 @@ actual class Process actual constructor(args: ProcessArguments)  {
                 RedirectFds(-1, stdout.writeFd)
             else
                 args.stderr.openFds("stderr")
-            stdin = args.stdin.openFds("sdtin")
-
-
+            stdin = args.stdin.openFds("stdin")
             @Suppress("UNCHECKED_CAST")
             task.environment = args.environment as? Map<Any?, *>
             task.setLaunchPath(args.arguments.firstOrNull())
             task.arguments = args.arguments.drop(1)
+            task.standardOutput = NSFileHandle(stdout.writeFd, true)
+            task.standardInput = NSFileHandle(stdin.readFd, true)
+            task.standardError = NSFileHandle(stderr.writeFd, true)
+            args.workingDirectory?.run(task::setCurrentDirectoryPath)
             task.launch()
 
             stdoutFd = stdout.readFd
@@ -138,13 +136,17 @@ actual class Process actual constructor(args: ProcessArguments)  {
             stdin?.writeFd?.closeFd()
             throw e
         }
+
+        if (Platform.memoryModel == MemoryModel.STRICT) {
+            args.freeze()
+        }
     }
 
     actual val isAlive: Boolean
         get() = task.isRunning()
 
     actual val exitCode: Int?
-        get() = task.terminationStatus
+        get() = if (task.isRunning()) null else task.terminationStatus
 
     actual fun waitFor(): Int {
         task.waitUntilExit()
@@ -152,9 +154,22 @@ actual class Process actual constructor(args: ProcessArguments)  {
     }
 
     @ExperimentalTime
-    actual fun waitFor(timeout: Duration): Int? = runBlocking {
-        delay(timeout)
-        task.terminationStatus
+    actual fun waitFor(timeout: Duration): Int? {
+        require(timeout.isPositive()) { "Timeout must be positive!" }
+        // there is no good blocking solution, so use an active loop with sleep in between.
+        val clk = TimeSource.Monotonic
+        val deadline = clk.markNow() + timeout
+        while (true) {
+            // return if done or now passed the deadline
+            if (!task.isRunning()) return task.terminationStatus
+            if (deadline.hasPassedNow()) return null
+            // TODO select good frequency
+            memScoped {
+                val ts = alloc<timespec>()
+                ts.tv_nsec = 50 * 1000
+                nanosleep(ts.ptr, ts.ptr)
+            }
+        }
     }
 
     actual val stdin: Output? by lazy {

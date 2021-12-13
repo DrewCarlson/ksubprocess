@@ -23,6 +23,7 @@ import drewcarlson.ksubprocess.io.WindowsException
 import io.ktor.utils.io.core.*
 import kotlinx.cinterop.*
 import platform.windows.*
+import kotlin.native.concurrent.*
 import kotlin.time.Duration
 import kotlin.time.ExperimentalTime
 
@@ -250,6 +251,10 @@ actual class Process actual constructor(actual val args: ProcessArguments) {
             stdin.readFd.close(ignoreErrors = true)
             stdin.writeFd.close(ignoreErrors = true)
             throw e
+        }
+
+        if (Platform.memoryModel == MemoryModel.STRICT) {
+            args.freeze() // frozen args val since they get shared.
         }
     }
 

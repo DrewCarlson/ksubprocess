@@ -41,7 +41,7 @@ class ProcessTests {
         assertEquals(0, proc.exitCode, "Process exited normally.")
 
         // check output
-        assertEquals("Hello World!", outText.lines().first())
+        assertEquals("Hello World!", outText.lines().firstOrNull())
     }
 
     @Test
@@ -204,8 +204,8 @@ class ProcessTests {
         assertEquals(0, proc.exitCode, "Process exited normally.")
 
         // check result
-        val actAbsWD = outText.lines().first()
-        assertTrue(actAbsWD.endsWith(wd), "Working directory $actAbsWD")
+        val actAbsWD = outText.lines().firstOrNull()
+        assertTrue(actAbsWD?.endsWith(wd) ?: false, "Working directory $actAbsWD should be $wd")
     }
 
     @ExperimentalTime

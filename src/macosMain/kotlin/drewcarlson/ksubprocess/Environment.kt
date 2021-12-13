@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 Felix Treede
+ * Copyright 2021 Drew Carlson
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,61 +15,13 @@
  */
 package drewcarlson.ksubprocess
 
-import kotlinx.cinterop.*
-import platform.osx.*
-import platform.posix.*
+import platform.Foundation.*
 
-private data class EnvEntry(override val key: String, override val value: String) : Map.Entry<String, String>
-
+@Suppress("UNCHECKED_CAST")
 @ThreadLocal
-actual object Environment : AbstractMap<String, String>(), Map<String, String> {
+actual object Environment : Map<String, String> by NSProcessInfo.processInfo.environment as Map<String, String> {
 
-    // fastpath get and contains through getenv
-    override fun containsKey(key: String): Boolean = getenv(key) != null
-
-    override fun get(key: String): String? = getenv(key)?.toKString()
-
-    // also fastpath entries.contains
-    override val entries: Set<Map.Entry<String, String>> = object : AbstractSet<Map.Entry<String, String>>() {
-        override fun contains(element: Map.Entry<String, String>): Boolean = get(
-            element.key
-        ) == element.value
-
-        // only perform full scan if really needed
-        // note: these are not thread safe, but that's a fault of the underlying API.
-        override val size: Int
-            get() {
-                var sz = 0
-                val ep = _NSGetEnviron()
-                // loop until null entry
-                if (ep != null)
-                    while (ep[sz] != null) sz++
-                return sz
-            }
-
-        override fun iterator() = object : Iterator<Map.Entry<String, String>> {
-
-            var ep = _NSGetEnviron()
-
-            override fun hasNext(): Boolean {
-                return ep?.get(0) != null
-            }
-
-            override fun next(): Map.Entry<String, String> {
-                // get current element as kstring
-                val cur = ep?.pointed?.value?.get(0)?.toKString() ?: throw NoSuchElementException()
-
-                // separate key/value
-                val (key, value) = cur.split('=', limit = 2)
-                // increment
-                ep += 1
-                return EnvEntry(key, value)
-            }
-        }
-    }
-
-    actual val caseInsensitive: Boolean
-        get() = false // never on linux
+    actual val caseInsensitive: Boolean = false
 }
 
 internal fun Map<String, String>.toEnviron() = map { "${it.key}=${it.value}" }

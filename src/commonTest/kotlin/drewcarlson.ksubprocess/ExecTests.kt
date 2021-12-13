@@ -38,7 +38,7 @@ class ExecTests {
         }
 
         // check output
-        assertEquals("Hello World!", result.output.lines().first())
+        assertEquals("Hello World!", result.output.lines().firstOrNull())
     }
 
 

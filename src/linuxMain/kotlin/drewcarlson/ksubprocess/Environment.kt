@@ -33,9 +33,7 @@ actual object Environment : AbstractMap<String, String>(), Map<String, String> {
 
     // also fastpath entries.contains
     override val entries: Set<Map.Entry<String, String>> = object : AbstractSet<Map.Entry<String, String>>() {
-        override fun contains(element: Map.Entry<String, String>): Boolean = get(
-            element.key
-        ) == element.value
+        override fun contains(element: Map.Entry<String, String>): Boolean = get(element.key) == element.value
 
         // only perform full scan if really needed
         // note: these are not thread safe, but that's a fault of the underlying API.

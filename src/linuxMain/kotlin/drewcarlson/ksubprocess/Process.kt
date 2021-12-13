@@ -45,10 +45,7 @@ private data class RedirectFds(val readFd: Int, val writeFd: Int) {
 
 private fun Redirect.openFds(stream: String): RedirectFds = when (this) {
     Redirect.Null -> {
-        val fd = open(
-            "/dev/null",
-            O_RDWR
-        )
+        val fd = open("/dev/null", O_RDWR)
         if (fd == -1) {
             throw ProcessConfigException(
                 "Error opening null file for $stream",
@@ -109,10 +106,9 @@ private fun MemScope.toCStrVector(data: List<String>): CArrayPointer<CPointerVar
 }
 
 
-actual class Process actual constructor(args: ProcessArguments) {
-
-    // frozen args val since they get shared.
-    actual val args = args.freeze()
+actual class Process actual constructor(
+    actual val args: ProcessArguments
+) {
 
     // set to true when done
     private var terminated = false
@@ -204,6 +200,10 @@ actual class Process actual constructor(args: ProcessArguments) {
             stdin?.readFd?.closeFd()
             stdin?.writeFd?.closeFd()
             throw t
+        }
+
+        if (Platform.memoryModel == MemoryModel.STRICT) {
+            args.freeze() // frozen args val since they get shared.
         }
     }
 
