@@ -1,4 +1,4 @@
-package = com.github.xfel.ksubprocess.iop
+package = drewcarlson.ksubprocess.iop
 
 ---
 #include <errno.h>
