@@ -71,7 +71,7 @@ class WindowsIOTest {
 
 
     @Test
-    fun `Reading/writing a pipe`() {
+    fun `Reading+writing a pipe`() {
         val (readPipe, writePipe) = memScoped {
             // open a pipe
             val hReadPipe = alloc<HANDLEVar>()

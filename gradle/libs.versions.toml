@@ -1,0 +1,13 @@
+[versions]
+kotlin = "1.6.0"
+dokka = "1.6.0"
+ktor = "1.6.7"
+shadow = "7.1.0"
+
+[plugins]
+multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+dokka = { id = "org.jetbrains.dokka", version.ref = "dokka" }
+shadow = { id = "com.github.johnrengelman.shadow", version.ref = "shadow" }
+
+[libraries]
+ktor-io = { module = "io.ktor:ktor-io", version.ref = "ktor" }

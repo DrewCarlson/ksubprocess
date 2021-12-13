@@ -19,6 +19,7 @@ import io.ktor.utils.io.core.*
 import kotlin.js.JsName
 import kotlin.test.*
 import kotlin.time.*
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * Tests for the [Process] class.
@@ -221,12 +222,12 @@ class ProcessTests {
         assertTrue(proc.isAlive, "Process died before first wait")
         assertNull(proc.exitCode, "Exit code should be unknown since process is alive")
         // wait for termination with timeout (waiting 1 second should fail since the sleeper program takes 2)
-        assertNull(proc.waitFor(Duration.seconds(1)), "Should not succeed yet")
+        assertNull(proc.waitFor(1.seconds), "Should not succeed yet")
         assertTrue(proc.isAlive, "Process died after first wait")
         assertNull(proc.exitCode, "Exit code should be unknown since process is still alive")
 
         // wait another 3 seconds max - this should work
-        assertEquals(0, proc.waitFor(Duration.seconds(4)), "Should succeed since the subprocess takes less time")
+        assertEquals(0, proc.waitFor(4.seconds), "Should succeed since the subprocess takes less time")
         assertFalse(proc.isAlive, "Process should now be stopped")
         assertEquals(0, proc.exitCode, "Process should have exited normally")
     }

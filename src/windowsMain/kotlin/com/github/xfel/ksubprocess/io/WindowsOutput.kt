@@ -25,7 +25,7 @@ import platform.windows.HANDLE
 fun Output(handle: HANDLE?): Output = WindowsOutputForFileHandle(handle)
 
 @OptIn(ExperimentalIoApi::class)
-private class WindowsOutputForFileHandle(val handle: HANDLE?) : Output() {
+private class WindowsOutputForFileHandle(val handle: HANDLE?) : AbstractOutput() {
     private var closed = false
     override fun closeDestination() {
         if (closed) return

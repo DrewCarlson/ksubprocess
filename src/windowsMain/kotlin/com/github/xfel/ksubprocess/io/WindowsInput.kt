@@ -25,7 +25,7 @@ import platform.windows.HANDLE
 fun Input(handle: HANDLE?): Input = WindowsInputForFileHandle(handle)
 
 @OptIn(ExperimentalIoApi::class)
-private class WindowsInputForFileHandle(val handle: HANDLE?) : Input() {
+private class WindowsInputForFileHandle(val handle: HANDLE?) : AbstractInput() {
     private var closed = false
     override fun closeSource() {
         if (closed) return

@@ -15,8 +15,8 @@
  */
 package com.github.xfel.ksubprocess
 
-import kotlinx.io.charsets.Charset
-import kotlinx.io.core.readText
+import io.ktor.utils.io.charsets.*
+import io.ktor.utils.io.core.*
 import java.util.concurrent.atomic.AtomicInteger
 
 /**

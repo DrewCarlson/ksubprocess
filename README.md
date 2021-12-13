@@ -1,12 +1,10 @@
-# Kotlin multiplatform child process library
+# ksubprocess
 
-![Bintray](https://img.shields.io/bintray/v/xfelde/ksubprocess/ksubprocess)
-![badge][badge-jvm]
-![badge][badge-windows]
-![badge][badge-linux]
+[![Maven Central](https://img.shields.io/maven-central/v/org.drewcarlson/ksubprocess-jvm?label=maven&color=blue)](https://search.maven.org/search?q=g:org.drewcarlson%20a:ksubprocess*)
+![](https://github.com/DrewCarlson/ksubprocess/workflows/Jvm/badge.svg)
+![](https://github.com/DrewCarlson/ksubprocess/workflows/Native/badge.svg)
 
-Allows to launch child processes, monitor their state and capture their output. The interface is inspired by python's
-`subprocess` module.
+Kotlin multiplatform library for launching child processes, monitoring their state, and capturing output.
 
 ```kotlin
 val result = exec {
@@ -33,27 +31,34 @@ println(result.output)
 
 ## Supported platforms
 
-The ksubprocess library supports the following platforms:
+Ksubprocess supports the following platforms:
 
 - JVM via `java.lang.Process`
 - Native/Linux via `fork`/`exec`
 - Native/Windows via `CreateProcess`
-
-Node.JS support is WIP, the environment interface works, but the process interface is hindered by the fact that it is 
-synchronous, while the respective Node.JS api is asynchronous.
-Mac support is possible, and can probably reuse a lot of the linux code. I don't own a mac to develop on, but 
-contributions would be welcome.
-
-## Stability
-The library itself is well tested and has a relatively stable interface. Additional unit tests are welcome. However, in 
-order to provide a platform-independent stream interface, the library depends on the 
-[kotlinx-io](https://github.com/Kotlin/kotlinx-io) library, which is still in early development. Unfortunately, there
-are no good alternatives short of implementing our own io library. Because of that, this library is is still incubating.
+- Native/macOS via `NSTask`
 
 
-[badge-native]: http://img.shields.io/badge/platform-native-lightgrey.svg?style=flat
-[badge-js]: http://img.shields.io/badge/platform-js-yellow.svg?style=flat
-[badge-jvm]: http://img.shields.io/badge/platform-jvm-orange.svg?style=flat
-[badge-linux]: http://img.shields.io/badge/platform-linux-important.svg?style=flat 
-[badge-windows]: http://img.shields.io/badge/platform-windows-informational.svg?style=flat
-[badge-mac]: http://img.shields.io/badge/platform-macos-lightgrey.svg?style=flat
+## Download
+
+[![Maven Central](https://img.shields.io/maven-central/v/org.drewcarlson/ksubprocess-jvm?label=maven&color=blue)](https://search.maven.org/search?q=g:org.drewcarlson%20a:ksubprocess*)
+![Sonatype Nexus (Snapshots)](https://img.shields.io/nexus/s/org.drewcarlson/ksubprocess-jvm?server=https%3A%2F%2Fs01.oss.sonatype.org)
+
+
+![](https://img.shields.io/static/v1?label=&message=Platforms&color=grey)
+![](https://img.shields.io/static/v1?label=&message=Jvm&color=blue)
+![](https://img.shields.io/static/v1?label=&message=Linux&color=blue)
+![](https://img.shields.io/static/v1?label=&message=macOS&color=blue)
+![](https://img.shields.io/static/v1?label=&message=Windows&color=blue)
+
+```kotlin
+repositories {
+    mavenCentral()
+    // Or snapshots
+    maven("https://s01.oss.sonatype.org/content/repositories/snapshots/")
+}
+
+dependencies {
+    implementation("org.drewcarlson:ksubprocess:$VERSION")
+}
+```

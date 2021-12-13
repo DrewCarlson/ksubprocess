@@ -15,10 +15,8 @@
  */
 package com.github.xfel.ksubprocess
 
-import kotlinx.io.core.Input
-import kotlinx.io.core.Output
-import kotlinx.io.streams.asInput
-import kotlinx.io.streams.asOutput
+import io.ktor.utils.io.core.*
+import io.ktor.utils.io.streams.*
 import java.io.File
 import java.io.IOException
 import java.util.concurrent.TimeUnit
@@ -97,7 +95,7 @@ actual class Process actual constructor(actual val args: ProcessArguments) {
     @ExperimentalTime
     actual fun waitFor(timeout: Duration): Int? {
         // perform wait
-        val terminated = impl.waitFor(timeout.toLongMilliseconds(), TimeUnit.MILLISECONDS)
+        val terminated = impl.waitFor(timeout.inWholeMilliseconds, TimeUnit.MILLISECONDS)
         // return exit code as if successful
         return if (terminated) impl.exitValue() else null
     }
