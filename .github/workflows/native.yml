@@ -16,6 +16,7 @@ jobs:
       - uses: actions/checkout@v2
       - uses: actions/setup-java@v2
         with:
+          distribution: 'zulu'
           java-version: 11
       - name: Cache Build files
         uses: actions/cache@v2
