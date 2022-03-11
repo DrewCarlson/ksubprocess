@@ -2,7 +2,7 @@
 kotlin = "1.6.10"
 dokka = "1.6.10"
 ktor = "1.6.7"
-shadow = "7.1.0"
+shadow = "7.1.2"
 
 [plugins]
 multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
