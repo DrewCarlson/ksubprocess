@@ -1,6 +1,6 @@
 [versions]
 kotlin = "1.6.10"
-dokka = "1.6.0"
+dokka = "1.6.10"
 ktor = "1.6.7"
 shadow = "7.1.0"
 
