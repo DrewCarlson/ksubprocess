@@ -8,18 +8,17 @@ Kotlin multiplatform library for launching child processes, monitoring their sta
 
 ```kotlin
 val result = exec {
-    // some command line
-    arg("aprogram")
-    arg("-flag")
-    arg("/path/to/file")
+    // some command line program
+    arg("curl")
+    args("-d", "@-")
+    arg("https://my.api")
     // redirect streams
     stdin = Redirect.Pipe
     stdout = Redirect.Pipe
     stderr = Redirect.Write("/log/file")
-    // add input
+    // pipe input data to stdin
     input {
-        append("Bla")
-        append("Blub")
+        append("Hello, World")
     }
     // check for errors
     check = true

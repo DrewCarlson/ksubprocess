@@ -138,6 +138,16 @@ open class ProcessArgumentBuilder {
     }
 
     /**
+     * Append one argument and associated value to command line.
+     *
+     * @param arg added argument
+     */
+    fun args(arg: String, argValue: String) {
+        arguments.add(arg)
+        arguments.add(argValue)
+    }
+
+    /**
      * Read stdin from file.
      *
      * @param file name of input file
