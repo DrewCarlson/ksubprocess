@@ -1,4 +1,4 @@
-package = drewcarlson.ksubprocess.iop
+package = ksubprocess.iop
 
 ---
 #include <errno.h>
