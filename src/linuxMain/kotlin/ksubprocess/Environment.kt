@@ -42,8 +42,9 @@ actual object Environment : AbstractMap<String, String>(), Map<String, String> {
                 var sz = 0
                 val ep = __environ
                 // loop until null entry
-                if (ep != null)
+                if (ep != null) {
                     while (ep[sz] != null) sz++
+                }
                 return sz
             }
 

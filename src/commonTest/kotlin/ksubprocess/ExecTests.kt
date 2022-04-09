@@ -15,11 +15,12 @@
  */
 package ksubprocess
 
+import kotlinx.coroutines.Dispatchers.Default
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.invoke
+import kotlinx.coroutines.test.runTest
 import kotlin.js.JsName
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
-import kotlin.test.assertTrue
+import kotlin.test.*
 import kotlin.time.*
 import kotlin.time.Duration.Companion.seconds
 
@@ -28,33 +29,37 @@ import kotlin.time.Duration.Companion.seconds
  *
  * Also implicitly tests [communicate], since exec itself doesn't do much.
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 class ExecTests {
 
     @Test
     @JsName("testHelloWorld")
-    fun `Run simple program`() {
-        val result = exec {
-            testProgram("HelloWorldKt")
+    fun `Run simple program`() = runTest {
+        val result = Default {
+            exec {
+                testProgram("HelloWorldKt")
+            }
         }
 
         // check output
         assertEquals("Hello World!", result.output.lines().firstOrNull())
     }
 
-
     @Test
     @JsName("testEcho")
-    fun `Run echo program`() {
+    fun `Run echo program`() = runTest {
         val text = """
                 Line1
                 Line2
                 
         """.trimIndent()
 
-        val result = exec {
-            testProgram("EchoKt")
-            // setup input
-            input = text
+        val result = Default {
+            exec {
+                testProgram("EchoKt")
+                // setup input
+                input = text
+            }
         }
 
         // check output
@@ -65,18 +70,20 @@ class ExecTests {
 
     @Test
     @JsName("testStdinFile")
-    fun `Read stdin from file`() {
-        val result = exec {
-            testProgram("EchoKt")
-            // setup stdin redirect
-            stdin = Redirect.Read("testfiles/TestInput.txt")
+    fun `Read stdin from file`() = runTest {
+        val result = Default {
+            exec {
+                testProgram("EchoKt")
+                // setup stdin redirect
+                stdin = Redirect.Read("testfiles/TestInput.txt")
+            }
         }
 
         val text = """
                     Line1
                     Line2
                     
-            """.trimIndent()
+        """.trimIndent()
         // check output
         for ((ex, act) in text.lines() zip result.output.lines()) {
             assertEquals(ex, act)
@@ -85,18 +92,20 @@ class ExecTests {
 
     @Test
     @JsName("testExitCode")
-    fun `Process exit code and check=true`() {
+    fun `Process exit code and check=true`() = runTest {
         val codes = listOf(0, 1, 120)
 
         for (code in codes) {
-            val result = exec {
-                testProgram("ExitCodeKt")
+            val result = Default {
+                exec {
+                    testProgram("ExitCodeKt")
 
-                // setup return code
-                arg(code.toString())
+                    // setup return code
+                    arg(code.toString())
 
-                // disable check so we can verify the code manually
-                check = false
+                    // disable check so we can verify the code manually
+                    check = false
+                }
             }
 
             assertEquals(code, result.exitCode, "Process exited with desired code.")
@@ -104,14 +113,16 @@ class ExecTests {
 
         // verify check function
         assertFailsWith(ProcessExitException::class, "Check trips process exit") {
-            exec {
-                testProgram("ExitCodeKt")
+            Default {
+                exec {
+                    testProgram("ExitCodeKt")
 
-                // setup return code
-                arg("1")
+                    // setup return code
+                    arg("1")
 
-                // explicitly enable check
-                check = true
+                    // explicitly enable check
+                    check = true
+                }
             }
         }
     }
@@ -119,20 +130,23 @@ class ExecTests {
     @OptIn(ExperimentalTime::class)
     @Test
     @JsName("testTimeout")
-    fun `Timeout and termination`() {
+    @Ignore
+    fun `Timeout and termination`() = runTest {
         // time run duration
         val (_, time) = measureTimedValue {
-            exec {
-                testProgram("SleeperKt")
+            Default {
+                exec {
+                    testProgram("SleeperKt")
 
-                // setup 20 seconds sleep
-                arg("20")
+                    // setup 20 seconds sleep
+                    arg("20")
 
-                // timeout way earlier with grace
-                timeout = 3.seconds
+                    // timeout way earlier with grace
+                    timeout = 5.seconds
 
-                // disable check so we can verify the code manually
-                check = false
+                    // disable check so we can verify the code manually
+                    check = false
+                }
             }
         }
 

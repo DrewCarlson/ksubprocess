@@ -17,8 +17,9 @@ package ksubprocess
 
 import io.ktor.utils.io.core.*
 import io.ktor.utils.io.errors.*
-import io.ktor.utils.io.streams.*
 import kotlinx.cinterop.*
+import kotlinx.coroutines.flow.Flow
+import ksubprocess.io.*
 import platform.Foundation.*
 import platform.posix.*
 import kotlin.native.concurrent.*
@@ -35,7 +36,6 @@ private data class RedirectFds(val readFd: Int, val writeFd: Int) {
     )
 }
 
-@OptIn(ExperimentalIoApi::class)
 private fun Redirect.openFds(stream: String): RedirectFds = when (this) {
     Redirect.Null -> {
         val fd = open("/dev/null", O_RDWR)
@@ -88,8 +88,7 @@ private fun Redirect.openFds(stream: String): RedirectFds = when (this) {
     Redirect.Stdout -> error("Redirect.Stdout must be handled separately.")
 }
 
-@OptIn(ExperimentalIoApi::class)
-actual class Process actual constructor(actual val args: ProcessArguments)  {
+actual class Process actual constructor(actual val args: ProcessArguments) {
 
     private val task = NSTask()
 
@@ -103,10 +102,11 @@ actual class Process actual constructor(actual val args: ProcessArguments)  {
         var stdin: RedirectFds? = null
         try {
             stdout = args.stdout.openFds("stdout")
-            stderr = if (args.stderr == Redirect.Stdout)
+            stderr = if (args.stderr == Redirect.Stdout) {
                 RedirectFds(-1, stdout.writeFd)
-            else
+            } else {
                 args.stderr.openFds("stderr")
+            }
             stdin = args.stdin.openFds("stdin")
             @Suppress("UNCHECKED_CAST")
             task.environment = args.environment as? Map<Any?, *>
@@ -192,4 +192,10 @@ actual class Process actual constructor(actual val args: ProcessArguments)  {
     actual fun kill() {
         task.terminate()
     }
+
+    actual val stdoutLines: Flow<String>
+        get() = stdout.lines()
+
+    actual val stderrLines: Flow<String>
+        get() = stderr.lines()
 }

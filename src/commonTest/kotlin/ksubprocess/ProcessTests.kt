@@ -15,12 +15,10 @@
  */
 package ksubprocess
 
+import io.ktor.utils.io.charsets.Charsets.UTF_8
 import io.ktor.utils.io.core.*
-import ksubprocess.Process
-import ksubprocess.Redirect
 import kotlin.js.JsName
 import kotlin.test.*
-import kotlin.time.*
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -36,7 +34,7 @@ class ProcessTests {
             stdout = Redirect.Pipe
         }
         // read stdout
-        val outText = proc.stdout!!.readText()
+        val outText = proc.stdout!!.readText(UTF_8)
 
         // wait for termination
         proc.waitFor()
@@ -66,7 +64,7 @@ class ProcessTests {
         proc.stdin!!.close()
 
         // read stdout
-        val outText = proc.stdout!!.readText()
+        val outText = proc.stdout!!.readText(UTF_8)
 
         // wait for termination
         proc.waitFor()
@@ -91,10 +89,10 @@ class ProcessTests {
                     Line1
                     Line2
                     
-            """.trimIndent()
+        """.trimIndent()
 
         // read stdout
-        val outText = proc.stdout!!.readText()
+        val outText = proc.stdout!!.readText(UTF_8)
 
         // wait for termination
         proc.waitFor()
@@ -130,7 +128,7 @@ class ProcessTests {
         }
 
         // read stdout
-        val outText = proc.stdout!!.readText()
+        val outText = proc.stdout!!.readText(UTF_8)
 
         // wait for termination
         proc.waitFor()
@@ -144,7 +142,7 @@ class ProcessTests {
 
     @Test
     @JsName("testEnvVars")
-    fun `Setting environmet variables`() {
+    fun `Setting environment variables`() {
         val customVars = mapOf(
             "Var1" to "Value1",
             "Var2" to "Value with space"
@@ -168,7 +166,7 @@ class ProcessTests {
         }
 
         // read stdout
-        val outText = proc.stdout!!.readText()
+        val outText = proc.stdout!!.readText(UTF_8)
 
         // wait for termination
         proc.waitFor()
@@ -185,7 +183,6 @@ class ProcessTests {
         assertEquals("<NOT-SET>", varsFromChild[removedVar])
     }
 
-
     @Test
     @JsName("testCwd")
     fun `Changing working directory`() {
@@ -199,7 +196,7 @@ class ProcessTests {
         }
 
         // read stdout
-        val outText = proc.stdout!!.readText()
+        val outText = proc.stdout!!.readText(UTF_8)
 
         // wait for termination
         proc.waitFor()
@@ -233,7 +230,6 @@ class ProcessTests {
         assertEquals(0, proc.exitCode, "Process should have exited normally")
     }
 
-
     @Test
     @JsName("testExitCode")
     fun `Process exit code`() {
@@ -250,5 +246,4 @@ class ProcessTests {
             assertEquals(code, codeAct, "Process exited with desired code.")
         }
     }
-
 }

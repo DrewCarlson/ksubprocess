@@ -1,13 +1,24 @@
 [versions]
-kotlin = "1.7.0"
-dokka = "1.7.0"
-ktor = "1.6.8"
+kotlin = { strictly = "1.7.10" }
+dokka = "1.7.10"
+ktor = "2.0.3"
 shadow = "7.1.2"
+coroutines = "1.6.4"
+binary_compat = "0.11.0"
+
+spotless = "6.8.0"
+ktlint = "0.46.1"
 
 [plugins]
 multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 dokka = { id = "org.jetbrains.dokka", version.ref = "dokka" }
+binaryCompat = { id = "org.jetbrains.kotlinx.binary-compatibility-validator", version.ref = "binary_compat" }
+spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
 shadow = { id = "com.github.johnrengelman.shadow", version.ref = "shadow" }
 
 [libraries]
 ktor-io = { module = "io.ktor:ktor-io", version.ref = "ktor" }
+
+coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
+coroutines-jdk8 = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-jdk8", version.ref = "coroutines" }
+coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }

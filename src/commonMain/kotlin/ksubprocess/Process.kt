@@ -16,6 +16,7 @@
 package ksubprocess
 
 import io.ktor.utils.io.core.*
+import kotlinx.coroutines.flow.Flow
 import kotlin.time.Duration
 
 /**
@@ -65,6 +66,12 @@ constructor(args: ProcessArguments) {
     /** stderr pipe if requested. */
     val stderr: Input?
 
+    /** stdout lines if requested. */
+    val stdoutLines: Flow<String>
+
+    /** stderr lines if requested. */
+    val stderrLines: Flow<String>
+
     /**
      * Terminate the child process.
      *
@@ -78,7 +85,6 @@ constructor(args: ProcessArguments) {
      * This method attempts to do so forcefully if the operating system is capable of doing so.
      */
     fun kill()
-
 }
 
 /**
@@ -87,6 +93,5 @@ constructor(args: ProcessArguments) {
  * @param builder builder callback
  * @throws ProcessException if the launch failed
  */
-@Suppress("FunctionName")
 inline fun Process(builder: ProcessArgumentBuilder.() -> Unit) =
     Process(ProcessArguments(builder))

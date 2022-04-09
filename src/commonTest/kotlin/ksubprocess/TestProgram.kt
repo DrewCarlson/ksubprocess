@@ -15,12 +15,7 @@
  */
 package ksubprocess
 
-import ksubprocess.Environment
-import ksubprocess.ExecArgumentsBuilder
-import ksubprocess.ProcessArgumentBuilder
-import ksubprocess.Redirect
 import kotlin.test.fail
-
 
 /**
  * Setup process arguments to run a test program from the testprograms subproject.
@@ -32,9 +27,9 @@ import kotlin.test.fail
 fun ProcessArgumentBuilder.testProgram(mainClass: String) {
     // add java launch args
     arguments.clear()
-    arg(ksubprocess.Environment["PT_JAVA_EXE"] ?: fail("Missing PT_JAVA_EXE environment variable"))
+    arg(Environment["PT_JAVA_EXE"] ?: fail("Missing PT_JAVA_EXE environment variable"))
     arg("-cp")
-    arg(ksubprocess.Environment["PT_JAR"] ?: fail("Missing PT_JAR environment variable"))
+    arg(Environment["PT_JAR"] ?: fail("Missing PT_JAR environment variable"))
     arg(mainClass)
 
     // setup streams if needed.

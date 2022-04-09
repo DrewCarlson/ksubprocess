@@ -15,17 +15,14 @@
  */
 package ksubprocess.io
 
-import ksubprocess.close
 import io.ktor.utils.io.bits.*
 import io.ktor.utils.io.core.*
+import ksubprocess.close
 import platform.windows.HANDLE
 
-@Suppress("FunctionName")
-@OptIn(ExperimentalIoApi::class)
 fun Input(handle: HANDLE?): Input = WindowsInputForFileHandle(handle)
 
-@OptIn(ExperimentalIoApi::class)
-private class WindowsInputForFileHandle(val handle: HANDLE?) : AbstractInput() {
+private class WindowsInputForFileHandle(val handle: HANDLE?) : Input() {
     private var closed = false
     override fun closeSource() {
         if (closed) return
@@ -34,6 +31,6 @@ private class WindowsInputForFileHandle(val handle: HANDLE?) : AbstractInput() {
     }
 
     override fun fill(destination: Memory, offset: Int, length: Int): Int {
-        return read(handle, destination, length).toInt()
+        return read(handle, destination, offset, length).toInt()
     }
 }

@@ -15,6 +15,7 @@
  */
 package ksubprocess.io
 
+import io.ktor.utils.io.charsets.Charsets.UTF_8
 import io.ktor.utils.io.core.*
 import kotlinx.cinterop.alloc
 import kotlinx.cinterop.memScoped
@@ -28,7 +29,6 @@ import kotlin.test.fail
 /**
  * Tests for the HANDLE-based IO functions.
  */
-@ExperimentalIoApi
 class WindowsIOTest {
 
     // TODO add more tests. Pipes specifically, and writing too.
@@ -47,13 +47,13 @@ class WindowsIOTest {
         if (fd == INVALID_HANDLE_VALUE) {
             fail(
                 "Error opening input file: " +
-                        WindowsException.fromLastError(functionName = "CreateFileW").message
+                    WindowsException.fromLastError(functionName = "CreateFileW").message
             )
         }
 
         val stream = Input(fd)
         try {
-            val text = stream.readText()
+            val text = stream.readText(UTF_8)
             val expected = """
                 Line1
                 Line2
@@ -63,12 +63,10 @@ class WindowsIOTest {
             for ((ex, act) in expected.lines() zip text.lines()) {
                 assertEquals(ex, act)
             }
-
         } finally {
             stream.close()
         }
     }
-
 
     @Test
     fun `Reading+writing a pipe`() {
@@ -80,7 +78,7 @@ class WindowsIOTest {
             if (CreatePipe(hReadPipe.ptr, hWritePipe.ptr, null, 0u) == 0) {
                 fail(
                     "Error creating pipe" +
-                            WindowsException.fromLastError(functionName = "CreateFileW").message
+                        WindowsException.fromLastError(functionName = "CreateFileW").message
                 )
             }
 
@@ -95,7 +93,7 @@ class WindowsIOTest {
             writeStream.writeText(text)
             writeStream.close()
 
-            val afterPipe = readStream.readText()
+            val afterPipe = readStream.readText(UTF_8)
 
             assertEquals(text, afterPipe)
         } finally {

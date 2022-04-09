@@ -20,12 +20,9 @@ import io.ktor.utils.io.core.*
 import ksubprocess.close
 import platform.windows.HANDLE
 
-@Suppress("FunctionName")
-@OptIn(ExperimentalIoApi::class)
 fun Output(handle: HANDLE?): Output = WindowsOutputForFileHandle(handle)
 
-@OptIn(ExperimentalIoApi::class)
-private class WindowsOutputForFileHandle(val handle: HANDLE?) : AbstractOutput() {
+private class WindowsOutputForFileHandle(val handle: HANDLE?) : Output() {
     private var closed = false
     override fun closeDestination() {
         if (closed) return
@@ -34,6 +31,6 @@ private class WindowsOutputForFileHandle(val handle: HANDLE?) : AbstractOutput()
     }
 
     override fun flush(source: Memory, offset: Int, length: Int) {
-        write(handle, source, length)
+        write(handle, source, offset, length)
     }
 }
