@@ -2,6 +2,8 @@
 plugins {
     alias(libs.plugins.multiplatform)
     alias(libs.plugins.dokka)
+    alias(libs.plugins.binaryCompat)
+    alias(libs.plugins.spotless)
 }
 
 apply(from = "gradle/publish.gradle.kts")
@@ -32,19 +34,31 @@ kotlin {
         val commonMain by getting {
             dependencies {
                 implementation(libs.ktor.io)
+                implementation(libs.coroutines.core)
             }
         }
 
         val commonTest by getting {
             dependencies {
+                implementation(libs.coroutines.test)
                 implementation(kotlin("test-common"))
                 implementation(kotlin("test-annotations-common"))
             }
         }
 
-        val macosMain by getting
+        val posixMain by creating {
+            dependsOn(commonMain)
+        }
+
+        val linuxMain by getting {
+            dependsOn(posixMain)
+        }
+        val macosMain by getting {
+            dependsOn(posixMain)
+        }
         val macosArm64Main by getting {
             dependsOn(macosMain)
+            dependsOn(posixMain)
         }
 
         val jvmTest by getting {
@@ -56,6 +70,16 @@ kotlin {
     }
 }
 
+spotless {
+    kotlin {
+        target("**/**.kt")
+        ktlint(libs.versions.ktlint.get())
+            .setUseExperimental(true)
+            .editorConfigOverride(mapOf(
+                "disabled_rules" to "no-wildcard-imports,no-unused-imports,trailing-comma,filename"
+            ))
+    }
+}
 
 tasks.withType<Test> {
     dependsOn(":testprograms:shadowJar")

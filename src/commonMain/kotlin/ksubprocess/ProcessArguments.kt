@@ -65,20 +65,20 @@ sealed class Redirect {
      */
     class Write(val file: String, val append: Boolean = false) : Redirect() {
         override fun toString() = buildString {
-            if (append)
+            if (append) {
                 append("append to ")
-            else
+            } else {
                 append("write to ")
+            }
             append(file)
         }
     }
 }
 
-
 /**
  * Mutable builder for process arguments and environment.
  *
- * This class is open so [ExecArgumentsBuilder] can inherit from it and add it's own arguments.
+ * This class is open so [ExecArgumentsBuilder] can inherit from it and add its own arguments.
  */
 open class ProcessArgumentBuilder {
 
@@ -95,11 +95,12 @@ open class ProcessArgumentBuilder {
      * Subprocess environment.
      *
      * Will be initialized to the current process environment. Call `environment.clear()` to override the environment
-     * completely. This design was chosen because inheriting the parent environment is more common then overriding
+     * completely. This design was chosen because inheriting the parent environment is more common than overriding
      * it completely.
      */
     val environment: MutableMap<String, String>
         get() = environmentOrNull ?: EnvironmentBuilder().also { environmentOrNull = it }
+
     /**
      * Check if environment was modified at all.
      *
@@ -114,12 +115,14 @@ open class ProcessArgumentBuilder {
             require(!(value is Redirect.Write || value is Redirect.Stdout)) { "Unsupported redirect for stdin: $value" }
             field = value
         }
+
     /** stdout redirection, defaults to Pipe. */
     var stdout: Redirect = Redirect.Pipe
         set(value) {
             require(!(value is Redirect.Read || value is Redirect.Stdout)) { "Unsupported redirect for stdout: $value" }
             field = value
         }
+
     /** stderr redirection, defaults to Pipe. */
     var stderr: Redirect = Redirect.Pipe
         set(value) {
@@ -187,7 +190,6 @@ open class ProcessArgumentBuilder {
         stdout,
         stderr
     )
-
 }
 
 /**
@@ -245,7 +247,5 @@ class ProcessArguments(
  *
  * @param builder builder callback
  */
-@Suppress("FunctionName")
 inline fun ProcessArguments(builder: ProcessArgumentBuilder.() -> Unit) =
     ProcessArgumentBuilder().apply(builder).build()
-

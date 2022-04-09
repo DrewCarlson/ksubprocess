@@ -15,10 +15,7 @@
  */
 package ksubprocess
 
-import kotlinx.cinterop.get
-import kotlinx.cinterop.plus
-import kotlinx.cinterop.toKString
-import kotlinx.cinterop.wcstr
+import kotlinx.cinterop.*
 import platform.posix._wenviron
 import platform.posix._wgetenv
 
@@ -42,8 +39,9 @@ actual object Environment : AbstractMap<String, String>(), Map<String, String> {
                 var sz = 0
                 val ep = _wenviron
                 // loop until null entry
-                if (ep != null)
+                if (ep != null) {
                     while (ep[sz] != null) sz++
+                }
                 return sz
             }
 
@@ -69,5 +67,5 @@ actual object Environment : AbstractMap<String, String>(), Map<String, String> {
     }
 
     actual val caseInsensitive: Boolean
-        get() = true // always on windows
+        get() = true // always on Windows
 }

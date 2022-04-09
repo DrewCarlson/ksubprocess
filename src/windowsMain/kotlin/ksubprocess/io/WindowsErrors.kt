@@ -15,13 +15,11 @@
  */
 package ksubprocess.io
 
-import io.ktor.utils.io.core.*
 import kotlinx.cinterop.*
 import platform.windows.*
 
 private fun MAKELANGID(p: Int, s: Int) = ((s shl 10) or p).toUInt()
 
-@OptIn(ExperimentalIoApi::class)
 class WindowsException(val errorCode: DWORD, message: String) : Exception(message) {
 
     companion object {
@@ -32,9 +30,11 @@ class WindowsException(val errorCode: DWORD, message: String) : Exception(messag
             val msgBufHolder = alloc<LPWSTRVar>()
 
             FormatMessageW(
-                (FORMAT_MESSAGE_ALLOCATE_BUFFER or
-                    FORMAT_MESSAGE_FROM_SYSTEM or
-                    FORMAT_MESSAGE_IGNORE_INSERTS).toUInt(),
+                (
+                    FORMAT_MESSAGE_ALLOCATE_BUFFER or
+                        FORMAT_MESSAGE_FROM_SYSTEM or
+                        FORMAT_MESSAGE_IGNORE_INSERTS
+                    ).toUInt(),
                 NULL,
                 errorCode,
                 MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),

@@ -1,8 +1,7 @@
 # ksubprocess
 
 [![Maven Central](https://img.shields.io/maven-central/v/org.drewcarlson/ksubprocess-jvm?label=maven&color=blue)](https://search.maven.org/search?q=g:org.drewcarlson%20a:ksubprocess*)
-![](https://github.com/DrewCarlson/ksubprocess/workflows/Jvm/badge.svg)
-![](https://github.com/DrewCarlson/ksubprocess/workflows/Native/badge.svg)
+![](https://github.com/DrewCarlson/ksubprocess/workflows/Tests/badge.svg)
 
 Kotlin multiplatform library for launching child processes, monitoring their state, and capturing output.
 

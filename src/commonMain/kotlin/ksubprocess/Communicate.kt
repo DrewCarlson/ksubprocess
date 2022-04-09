@@ -17,6 +17,7 @@ package ksubprocess
 
 import io.ktor.utils.io.charsets.*
 import io.ktor.utils.io.core.*
+import kotlinx.coroutines.*
 import kotlin.time.*
 
 /**
@@ -43,7 +44,7 @@ data class CommunicateResult(
 }
 
 /**
- * Communicate with the process and wait for it's termination.
+ * Communicate with the process and wait for its termination.
  *
  * If stdin is a pipe, input will be written to it. Afterwards, stdin will be closed to signal end-of-input.
  *
@@ -63,20 +64,20 @@ data class CommunicateResult(
  * @return result of communication
  *
  * @throws ProcessException if another process error occurs
- * @throws IOException if an IO error occurs in the pipes
+ * @throws io.ktor.utils.io.errors.IOException if an IO error occurs in the pipes
  */
-fun Process.communicate(
+suspend fun Process.communicate(
     input: String = "",
     charset: Charset = Charsets.UTF_8,
     timeout: Duration? = null,
     killTimeout: Duration? = null
-): CommunicateResult {
+): CommunicateResult = coroutineScope {
     // start output pipe collectors
     val stdoutCollector =
-        if (args.stdout == Redirect.Pipe) BackgroundPipeCollector(this, false, charset)
+        if (args.stdout == Redirect.Pipe) async { requireNotNull(stdout).readText(charset) }
         else null
     val stderrCollector =
-        if (args.stderr == Redirect.Pipe) BackgroundPipeCollector(this, true, charset)
+        if (args.stderr == Redirect.Pipe) async { requireNotNull(stderr).readText(charset) }
         else null
 
     // push out the input data
@@ -107,31 +108,12 @@ fun Process.communicate(
     val exitCode = waitFor()
 
     // wait for output collectors
-    BackgroundPipeCollector.awaitAll(listOfNotNull(stdoutCollector, stderrCollector))
+    val results = listOfNotNull(stdoutCollector, stderrCollector).awaitAll()
 
     // return result
-    return CommunicateResult(
+    CommunicateResult(
         exitCode,
-        stdoutCollector?.result ?: "",
-        stderrCollector?.result ?: ""
+        results.firstOrNull() ?: "",
+        results.lastOrNull() ?: ""
     )
 }
-
-/** Reads the given stream's text in the background, used by communicate. */
-internal expect class BackgroundPipeCollector(
-    process: Process,
-    isStderr: Boolean,
-    charset: Charset
-) {
-    // wait for the stream to reach EOF
-    fun await()
-
-    // get result. result of calling before EOF is unspecified
-    val result: String
-
-    companion object {
-        // wait for all streams in list
-        fun awaitAll(readers: List<BackgroundPipeCollector>)
-    }
-}
-

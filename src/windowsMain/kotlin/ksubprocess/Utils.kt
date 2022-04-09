@@ -15,23 +15,20 @@
  */
 package ksubprocess
 
-import io.ktor.utils.io.core.*
-import ksubprocess.io.WindowsException
 import kotlinx.cinterop.convert
+import ksubprocess.io.WindowsException
 import platform.windows.*
 
 // close a windows handle and optionally report errors
-@OptIn(ExperimentalIoApi::class)
 internal fun HANDLE?.close(ignoreErrors: Boolean = false) {
-    if (this != INVALID_HANDLE_VALUE) {
-        if (CloseHandle(this) == 0 && !ignoreErrors) {
-            val ec = GetLastError()
-            if (ec.convert<Int>() != ERROR_INVALID_HANDLE) {
-                throw ProcessException(
-                    "Error closing handle",
-                    WindowsException.fromLastError(ec, "CloseHandle")
-                )
-            }
+    if (this == INVALID_HANDLE_VALUE) return
+    if (CloseHandle(this) == 0 && !ignoreErrors) {
+        val ec = GetLastError()
+        if (ec.convert<Int>() != ERROR_INVALID_HANDLE) {
+            throw ProcessException(
+                "Error closing handle",
+                WindowsException.fromLastError(ec, "CloseHandle")
+            )
         }
     }
 }

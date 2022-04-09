@@ -19,7 +19,6 @@ import platform.posix.F_OK
 import platform.posix.X_OK
 import platform.posix.access
 
-
 val executablePaths: List<String> by lazy {
     Environment["PATH"]?.split(':') ?: listOf()
 }

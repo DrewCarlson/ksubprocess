@@ -95,9 +95,9 @@ class ExecArgumentsBuilder : ProcessArgumentBuilder() {
  * @return result of communicate
  * @throws ProcessExitException if `check = true` and the process didn't terminate normally.
  * @throws ProcessException if another process error occurs
- * @throws IOException if an IO error occurs in the pipes
+ * @throws io.ktor.utils.io.errors.IOException if an IO error occurs in the pipes
  */
-inline fun exec(builder: ExecArgumentsBuilder.() -> Unit): CommunicateResult {
+suspend fun exec(builder: ExecArgumentsBuilder.() -> Unit): CommunicateResult {
     val rab = ExecArgumentsBuilder()
     rab.builder()
 

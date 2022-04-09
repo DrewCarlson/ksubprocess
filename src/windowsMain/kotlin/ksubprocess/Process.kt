@@ -13,15 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-@file:OptIn(ExperimentalIoApi::class)
-
 package ksubprocess
 
+import io.ktor.utils.io.core.*
+import kotlinx.cinterop.*
+import kotlinx.coroutines.flow.Flow
 import ksubprocess.io.Input
 import ksubprocess.io.Output
 import ksubprocess.io.WindowsException
-import io.ktor.utils.io.core.*
-import kotlinx.cinterop.*
 import platform.windows.*
 import kotlin.native.concurrent.*
 import kotlin.time.*
@@ -144,6 +143,7 @@ private fun Redirect.openFds(stream: String): RedirectFds = when (this) {
 actual class Process actual constructor(actual val args: ProcessArguments) {
 
     private val childProcessHandle: HANDLE
+
     // file descriptors for child pipes
     internal val stdoutFd: HANDLE?
     internal val stderrFd: HANDLE?
@@ -156,63 +156,67 @@ actual class Process actual constructor(actual val args: ProcessArguments) {
         try {
             // init redirects
             stdout = args.stdout.openFds("stdout")
-            stderr =
-                if (args.stderr == Redirect.Stdout) RedirectFds(
-                    INVALID_HANDLE_VALUE,
-                    stdout.writeFd
-                )
-                else args.stderr.openFds("stderr")
+            stderr = if (args.stderr == Redirect.Stdout) {
+                RedirectFds(INVALID_HANDLE_VALUE, stdout.writeFd)
+            } else {
+                args.stderr.openFds("stderr")
+            }
             stdin = args.stdin.openFds("stdin")
 
             // create child process in mem scope
             childProcessHandle = memScoped {
                 // convert command line
                 val cmdLine = args.arguments.joinToString(" ") { arg ->
-                    val quoteArg = arg //.replace("\"", "^\"") TODO find generic solution
+                    val quoteArg = arg // .replace("\"", "^\"") TODO find generic solution
                     if (' ' in quoteArg) "\"${quoteArg}\""
                     else quoteArg
                 }
                 // create env block if needed
                 val envBlock = args.environment?.let { env ->
-                    // convert to key=value strings
-                    val envStrs = env.map { e -> "${e.key}=${e.value}" }
-
                     // allocate block memory
-                    val block = allocArray<WCHARVar>(envStrs.sumOf { it.length + 1 } + 1)
+                    val charCount = env.entries.sumOf { (k, v) -> k.length + 1 + v.length + 1 }
+                    val block = allocArray<WCHARVar>(charCount + 1)
                     // fill block with strings
                     var cursor: CArrayPointer<WCHARVar>? = block
-                    for (envStr in envStrs) {
-                        lstrcpyW(cursor, envStr)
-                        cursor += envStr.length + 1
+                    for ((key, value) in env) {
+                        lstrcpyW(cursor, key)
+                        cursor += key.length
+                        lstrcpyW(cursor, "=")
+                        cursor += 1
+                        lstrcpyW(cursor, value)
+                        cursor += value.length
+                        cursor?.set(0, 0u)
+                        cursor += 1
                     }
                     // set final 0 terminator
-                    cursor!![0] = 0u
+                    cursor?.set(0, 0u)
 
                     block
                 }
 
                 // create process handle receiver
-                val piProcInfo = alloc<PROCESS_INFORMATION>()
+                val procInfo = alloc<PROCESS_INFORMATION>()
                 // populate startupinfo
-                val siStartInfo = alloc<STARTUPINFOW>()
-                siStartInfo.cb = sizeOf<STARTUPINFOW>().convert()
-                siStartInfo.hStdError = stderr.writeFd
-                siStartInfo.hStdOutput = stdout.writeFd
-                siStartInfo.hStdInput = stdin.readFd
-                siStartInfo.dwFlags = siStartInfo.dwFlags or STARTF_USESTDHANDLES.convert()
+                val startInfo = alloc<STARTUPINFOW> {
+                    cb = sizeOf<STARTUPINFOW>().convert()
+                    hStdError = stderr.writeFd
+                    hStdOutput = stdout.writeFd
+                    hStdInput = stdin.readFd
+                    dwFlags = dwFlags or STARTF_USESTDHANDLES.convert()
+                }
 
                 // start the process
                 val createSuccess = CreateProcessW(
-                    null,                        // lpApplicationName
-                    cmdLine.wcstr.ptr,           // command line
-                    null,                        // process security attributes
-                    null,                        // primary thread security attributes
-                    TRUE,                        // handles are inherited
-                    CREATE_UNICODE_ENVIRONMENT,  // creation flags
-                    envBlock,                    // use environment
-                    args.workingDirectory,       // use current directory if any (null auto propagation)
-                    siStartInfo.ptr,             // STARTUPINFO pointer
-                    piProcInfo.ptr               // receives PROCESS_INFORMATION
+                    null, // lpApplicationName
+                    cmdLine.wcstr.ptr, // command line
+                    null, // process security attributes
+                    null, // primary thread security attributes
+                    TRUE, // handles are inherited
+                    CREATE_UNICODE_ENVIRONMENT, // creation flags
+                    envBlock, // use environment
+                    args.workingDirectory, // use current directory if any (null auto propagation)
+                    startInfo.ptr, // STARTUPINFO pointer
+                    procInfo.ptr // receives PROCESS_INFORMATION
                 )
                 if (createSuccess == 0) {
                     throw ProcessException(
@@ -221,9 +225,9 @@ actual class Process actual constructor(actual val args: ProcessArguments) {
                     )
                 }
                 // close thread handle - we don't use it
-                piProcInfo.hThread?.close()
+                procInfo.hThread?.close()
                 // pass process handle to childProcessHandle field
-                piProcInfo.hProcess!!
+                procInfo.hProcess!!
             }
 
             // wait for the process to initialize
@@ -294,10 +298,9 @@ actual class Process actual constructor(actual val args: ProcessArguments) {
             "Error waiting for subprocess",
             WindowsException.fromLastError(functionName = "TerminateProcess")
         )
-        else -> exitCode ?: throw IllegalStateException("Waited for process, but it's still alive!")
+        else -> checkNotNull(exitCode) { "Waited for process, but it's still alive!" }
     }
 
-    @OptIn(ExperimentalTime::class)
     actual fun waitFor(timeout: Duration): Int? =
         when (WaitForSingleObject(childProcessHandle, timeout.inWholeMilliseconds.convert())) {
             WAIT_FAILED -> throw ProcessException(
@@ -335,4 +338,9 @@ actual class Process actual constructor(actual val args: ProcessArguments) {
         else null
     }
 
+    actual val stdoutLines: Flow<String>
+        get() = stdout.lines()
+
+    actual val stderrLines: Flow<String>
+        get() = stderr.lines()
 }

@@ -13,16 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-@file:OptIn(ExperimentalIoApi::class)
-
 package ksubprocess
 
-import ksubprocess.iop.fork_and_run
 import io.ktor.utils.io.core.*
 import io.ktor.utils.io.core.Input
 import io.ktor.utils.io.errors.*
-import io.ktor.utils.io.streams.*
 import kotlinx.cinterop.*
+import kotlinx.coroutines.flow.Flow
+import ksubprocess.io.Input
+import ksubprocess.io.Output
+import ksubprocess.iop.fork_and_run
 import platform.posix.*
 import kotlin.native.concurrent.freeze
 import kotlin.time.*
@@ -41,7 +41,6 @@ private data class RedirectFds(val readFd: Int, val writeFd: Int) {
         if (isRead) -1 else fd
     )
 }
-
 
 private fun Redirect.openFds(stream: String): RedirectFds = when (this) {
     Redirect.Null -> {
@@ -95,7 +94,6 @@ private fun Redirect.openFds(stream: String): RedirectFds = when (this) {
     Redirect.Stdout -> throw IllegalStateException("Redirect.Stdout must be handled separately.")
 }
 
-
 private fun MemScope.toCStrVector(data: List<String>): CArrayPointer<CPointerVar<ByteVar>> {
     val res = allocArray<CPointerVar<ByteVar>>(data.size + 1)
     for (i in data.indices) {
@@ -105,13 +103,13 @@ private fun MemScope.toCStrVector(data: List<String>): CArrayPointer<CPointerVar
     return res
 }
 
-
 actual class Process actual constructor(
     actual val args: ProcessArguments
 ) {
 
     // set to true when done
     private var terminated = false
+
     // exit status - only valid once terminated = true
     private var _exitStatus = -1
 
@@ -146,11 +144,12 @@ actual class Process actual constructor(
         try {
             // init redirects
             stdout = args.stdout.openFds("stdout")
-            stderr = if (args.stderr == Redirect.Stdout)
-            // use stdout
+            stderr = if (args.stderr == Redirect.Stdout) {
+                // use stdout
                 RedirectFds(-1, stdout.writeFd)
-            else
+            } else {
                 args.stderr.openFds("stderr")
+            }
             stdin = args.stdin.openFds("stdin")
 
             val pid = memScoped {
@@ -315,4 +314,10 @@ actual class Process actual constructor(
         if (stderrFd != -1) Input(stderrFd)
         else null
     }
+
+    actual val stdoutLines: Flow<String>
+        get() = stdout.lines()
+
+    actual val stderrLines: Flow<String>
+        get() = stderr.lines()
 }

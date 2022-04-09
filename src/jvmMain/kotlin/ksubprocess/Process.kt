@@ -17,6 +17,7 @@ package ksubprocess
 
 import io.ktor.utils.io.core.*
 import io.ktor.utils.io.streams.*
+import kotlinx.coroutines.flow.Flow
 import java.io.File
 import java.io.IOException
 import java.util.concurrent.TimeUnit
@@ -49,7 +50,6 @@ actual class Process actual constructor(actual val args: ProcessArguments) {
         }
     }
 
-
     private val impl: JProcess
 
     init {
@@ -65,10 +65,11 @@ actual class Process actual constructor(actual val args: ProcessArguments) {
             }
             pb.redirectInput(args.stdin.toJava("stdin"))
             pb.redirectOutput(args.stdout.toJava("stdout"))
-            if (args.stderr == Redirect.Stdout)
+            if (args.stderr == Redirect.Stdout) {
                 pb.redirectErrorStream(true)
-            else
+            } else {
                 pb.redirectError(args.stderr.toJava("stderr"))
+            }
 
             // start process
             impl = pb.start()
@@ -121,4 +122,9 @@ actual class Process actual constructor(actual val args: ProcessArguments) {
         else null
     }
 
+    actual val stdoutLines: Flow<String>
+        get() = stdout.lines()
+
+    actual val stderrLines: Flow<String>
+        get() = stderr.lines()
 }

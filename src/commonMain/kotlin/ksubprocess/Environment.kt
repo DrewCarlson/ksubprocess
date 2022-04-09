@@ -22,12 +22,12 @@ expect object Environment : Map<String, String> {
 
     /** true if the environment keys are case-insensitive */
     val caseInsensitive: Boolean
-
 }
 
 /**
  * Check if the given string is a valid environment key.
  */
+@Suppress("unused")
 fun Environment.validateKey(key: String) {
     require(!('=' in key || '\u0000' in key)) { "Invalid environment key: $key" }
 }
@@ -35,10 +35,10 @@ fun Environment.validateKey(key: String) {
 /**
  * Check if the given string is a valid environment value.
  */
+@Suppress("unused")
 fun Environment.validateValue(value: String) {
     require('\u0000' !in value) { "Invalid environment value: $value" }
 }
-
 
 private typealias EBEntryIF = MutableMap.MutableEntry<String, String>
 
@@ -51,10 +51,12 @@ class EnvironmentBuilder(init: Map<String, String> = Environment) : AbstractMuta
 
     init {
         if (init == Environment) {
-            // special case on windows: there are some dynamic env vars whose keys contain '='. We skip these when adding them here.
+            // special case on Windows: there are some dynamic env vars whose keys contain '='.
+            // We skip these when adding them here.
             init.forEach { (key, value) ->
-                if ('=' !in key)
+                if ('=' !in key) {
                     put(key, value)
+                }
             }
         } else {
             // validate env if not copying system env.
@@ -99,12 +101,10 @@ class EnvironmentBuilder(init: Map<String, String> = Environment) : AbstractMuta
 
             override fun hasNext() = wrapped.hasNext()
             override fun remove() = wrapped.remove()
-
         }
-
     }
 
-    // wrapper around string that compares case insensitive if Environment.caseInsensitive is true
+    // wrapper around string that compares case-insensitive if Environment.caseInsensitive is true
     private class EnvKey(val value: String) {
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
@@ -112,12 +112,12 @@ class EnvironmentBuilder(init: Map<String, String> = Environment) : AbstractMuta
 
             other as EnvKey
 
-            // compare case insensitive if needed
+            // compare case-insensitive if needed
             return value.compareTo(other.value, Environment.caseInsensitive) == 0
         }
 
         override fun hashCode(): Int {
-            // use upper case hash code if case insensitive
+            // use upper case hash code if case-insensitive
             return if (Environment.caseInsensitive) value.uppercase().hashCode() else value.hashCode()
         }
     }
@@ -146,6 +146,4 @@ class EnvironmentBuilder(init: Map<String, String> = Environment) : AbstractMuta
 
         constructor(outer: EBEntryIF) : this(EnvKey(outer.key), outer.value)
     }
-
-
 }
