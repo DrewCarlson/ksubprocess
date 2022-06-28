@@ -1,7 +1,7 @@
 [versions]
 kotlin = "1.7.0"
 dokka = "1.7.0"
-ktor = "1.6.8"
+ktor = "2.0.3"
 shadow = "7.1.2"
 
 [plugins]
