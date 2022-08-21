@@ -53,7 +53,7 @@ static void run_in_fork(
         execres = execv(executable, args);
     }
     if (execres != 0) {
-        perror("Error selecting working directory");
+        perror("Process executation failed");
         _exit(1);
     }
 }
