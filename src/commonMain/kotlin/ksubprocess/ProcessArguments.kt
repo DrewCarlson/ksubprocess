@@ -141,13 +141,21 @@ open class ProcessArgumentBuilder {
     }
 
     /**
-     * Append one argument and associated value to command line.
+     * Append multiple arguments to command line.
      *
-     * @param arg added argument
+     * @param args added arguments
      */
-    fun args(arg: String, argValue: String) {
-        arguments.add(arg)
-        arguments.add(argValue)
+    fun args(vararg args: String) {
+        arguments.addAll(args)
+    }
+
+    /**
+     * Append a collection of arguments to command line.
+     *
+     * @param args added arguments
+     */
+    fun args(args: Collection<String>) {
+        arguments.addAll(args)
     }
 
     /**

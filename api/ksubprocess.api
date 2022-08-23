@@ -106,7 +106,8 @@ public final class ksubprocess/Process$Companion {
 public class ksubprocess/ProcessArgumentBuilder {
 	public fun <init> ()V
 	public final fun arg (Ljava/lang/String;)V
-	public final fun args (Ljava/lang/String;Ljava/lang/String;)V
+	public final fun args (Ljava/util/Collection;)V
+	public final fun args ([Ljava/lang/String;)V
 	public final fun build ()Lksubprocess/ProcessArguments;
 	public final fun getArguments ()Ljava/util/List;
 	public final fun getEnvironment ()Ljava/util/Map;
