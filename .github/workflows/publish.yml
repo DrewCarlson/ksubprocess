@@ -25,7 +25,7 @@ jobs:
           fetch-depth: 0
       - name: Get changed files
         id: check
-        uses: tj-actions/changed-files@v27
+        uses: tj-actions/changed-files@v34
         with:
           files: |
             .github/workflows/publish.yml
@@ -83,7 +83,7 @@ jobs:
           arguments: clean dokkaHtml
 
       - name: Publish Docs
-        uses: JamesIves/github-pages-deploy-action@v4.4.0
+        uses: JamesIves/github-pages-deploy-action@v4.4.1
         with:
           branch: docs
           folder: build/dokka/html
