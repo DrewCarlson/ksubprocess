@@ -136,10 +136,6 @@ actual class Process actual constructor(actual val args: ProcessArguments) {
             stdin?.writeFd?.closeFd()
             throw e
         }
-
-        if (Platform.memoryModel == MemoryModel.STRICT) {
-            args.freeze()
-        }
     }
 
     actual val isAlive: Boolean

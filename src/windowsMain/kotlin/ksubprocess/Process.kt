@@ -255,10 +255,6 @@ actual class Process actual constructor(actual val args: ProcessArguments) {
             stdin.writeFd.close(ignoreErrors = true)
             throw e
         }
-
-        if (Platform.memoryModel == MemoryModel.STRICT) {
-            args.freeze() // frozen args val since they get shared.
-        }
     }
 
     // close handles when done!

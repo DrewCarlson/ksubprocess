@@ -200,10 +200,6 @@ actual class Process actual constructor(
             stdin?.writeFd?.closeFd()
             throw t
         }
-
-        if (Platform.memoryModel == MemoryModel.STRICT) {
-            args.freeze() // frozen args val since they get shared.
-        }
     }
 
     private fun cleanup() {
