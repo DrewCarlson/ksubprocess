@@ -130,6 +130,7 @@ class ExecTests {
     @OptIn(ExperimentalTime::class)
     @Test
     @JsName("testTimeout")
+    @Ignore
     fun `Timeout and termination`() = runTest {
         // time run duration
         val (_, time) = measureTimedValue {
