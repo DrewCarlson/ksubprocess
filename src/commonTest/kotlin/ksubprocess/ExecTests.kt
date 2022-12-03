@@ -130,7 +130,6 @@ class ExecTests {
     @OptIn(ExperimentalTime::class)
     @Test
     @JsName("testTimeout")
-    @Ignore
     fun `Timeout and termination`() = runTest {
         // time run duration
         val (_, time) = measureTimedValue {
@@ -142,7 +141,7 @@ class ExecTests {
                     arg("20")
 
                     // timeout way earlier with grace
-                    timeout = 5.seconds
+                    timeout = 2.seconds
 
                     // disable check so we can verify the code manually
                     check = false
@@ -151,7 +150,7 @@ class ExecTests {
         }
 
         // assertions on timing are always wonky, but we can probably guarantee this
-        assertTrue(time < 6.seconds, "Timeout worked.")
+        assertTrue(time < 3.seconds, "Timeout worked.")
 
         // NOTE: cannot check return codes, since those are platform dependent
         // NOTE: cannot test the forceful termination generally, since it's platform dependent.
