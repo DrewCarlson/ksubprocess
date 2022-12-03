@@ -109,11 +109,9 @@ suspend fun Process.communicate(
 
     // wait for output collectors
     val results = listOfNotNull(stdoutCollector, stderrCollector).awaitAll()
+    val output = results.firstOrNull().orEmpty()
+    val error = results.lastOrNull().orEmpty()
 
     // return result
-    CommunicateResult(
-        exitCode,
-        results.firstOrNull() ?: "",
-        results.lastOrNull() ?: ""
-    )
+    CommunicateResult(exitCode, output, error)
 }

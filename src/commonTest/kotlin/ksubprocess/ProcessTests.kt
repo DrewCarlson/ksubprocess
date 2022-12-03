@@ -60,7 +60,7 @@ class ProcessTests {
 
         // write stdin
         proc.stdin!!.writeText(text)
-        // close input so that the program can terminate TODO doesn't work on linux?
+        // close input so that the program can terminate
         proc.stdin!!.close()
 
         // read stdout

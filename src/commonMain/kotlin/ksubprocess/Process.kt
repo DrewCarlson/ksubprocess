@@ -55,8 +55,6 @@ constructor(args: ProcessArguments) {
      */
     fun waitFor(timeout: Duration): Int?
 
-    // TODO some kind of coroutine support
-
     /** stdin pipe if requested. */
     val stdin: Output?
 

@@ -6,7 +6,7 @@ import java.io.*
 fun main() {
     while (true) {
         val line = try {
-            readLine() ?: break
+            readlnOrNull() ?: break
         } catch (e: IOException) {
             break
         }
