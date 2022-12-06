@@ -15,9 +15,12 @@
  */
 package ksubprocess
 
-import io.ktor.utils.io.core.*
 import kotlinx.coroutines.flow.Flow
+import okio.*
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
+
+internal val POLLING_DELAY = 50.milliseconds
 
 /**
  * A child process.
@@ -45,7 +48,7 @@ constructor(args: ProcessArguments) {
      * Wait for the process to terminate.
      * @return exit code
      */
-    fun waitFor(): Int
+    suspend fun waitFor(): Int
 
     /**
      * Wait for the process to terminate, using a timeout.
@@ -53,16 +56,16 @@ constructor(args: ProcessArguments) {
      * @param timeout wait timeout duration
      * @return exit code or null if the process is still running
      */
-    fun waitFor(timeout: Duration): Int?
+    suspend fun waitFor(timeout: Duration): Int?
 
     /** stdin pipe if requested. */
-    val stdin: Output?
+    val stdin: BufferedSink?
 
     /** stdout pipe if requested. */
-    val stdout: Input?
+    val stdout: BufferedSource?
 
     /** stderr pipe if requested. */
-    val stderr: Input?
+    val stderr: BufferedSource?
 
     /** stdout lines if requested. */
     val stdoutLines: Flow<String>
@@ -83,6 +86,11 @@ constructor(args: ProcessArguments) {
      * This method attempts to do so forcefully if the operating system is capable of doing so.
      */
     fun kill()
+
+    /**
+     * Close stdin handles and free resources so allow process to complete.
+     */
+    fun closeStdin()
 }
 
 /**

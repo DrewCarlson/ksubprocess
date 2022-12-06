@@ -1,6 +1,6 @@
 public final class ksubprocess/CommunicateKt {
-	public static final fun communicate-1SI94y4 (Lksubprocess/Process;Ljava/lang/String;Ljava/nio/charset/Charset;Lkotlin/time/Duration;Lkotlin/time/Duration;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
-	public static synthetic fun communicate-1SI94y4$default (Lksubprocess/Process;Ljava/lang/String;Ljava/nio/charset/Charset;Lkotlin/time/Duration;Lkotlin/time/Duration;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public static final fun communicate-5TNNnBA (Lksubprocess/Process;Ljava/lang/String;Lkotlin/time/Duration;Lkotlin/time/Duration;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun communicate-5TNNnBA$default (Lksubprocess/Process;Ljava/lang/String;Lkotlin/time/Duration;Lkotlin/time/Duration;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
 }
 
 public final class ksubprocess/CommunicateResult {
@@ -66,13 +66,11 @@ public final class ksubprocess/EnvironmentKt {
 
 public final class ksubprocess/ExecArgumentsBuilder : ksubprocess/ProcessArgumentBuilder {
 	public fun <init> ()V
-	public final fun getCharset ()Ljava/nio/charset/Charset;
 	public final fun getCheck ()Z
 	public final fun getInput ()Ljava/lang/String;
 	public final fun getKillTimeout-FghU774 ()Lkotlin/time/Duration;
 	public final fun getTimeout-FghU774 ()Lkotlin/time/Duration;
 	public final fun input (Lkotlin/jvm/functions/Function1;)V
-	public final fun setCharset (Ljava/nio/charset/Charset;)V
 	public final fun setCheck (Z)V
 	public final fun setInput (Ljava/lang/String;)V
 	public final fun setKillTimeout-BwNAW2A (Lkotlin/time/Duration;)V
@@ -86,18 +84,19 @@ public final class ksubprocess/ExecKt {
 public final class ksubprocess/Process {
 	public static final field Companion Lksubprocess/Process$Companion;
 	public fun <init> (Lksubprocess/ProcessArguments;)V
+	public final fun closeStdin ()V
 	public final fun getArgs ()Lksubprocess/ProcessArguments;
 	public final fun getExitCode ()Ljava/lang/Integer;
-	public final fun getStderr ()Lio/ktor/utils/io/core/Input;
+	public final fun getStderr ()Lokio/BufferedSource;
 	public final fun getStderrLines ()Lkotlinx/coroutines/flow/Flow;
-	public final fun getStdin ()Lio/ktor/utils/io/core/Output;
-	public final fun getStdout ()Lio/ktor/utils/io/core/Input;
+	public final fun getStdin ()Lokio/BufferedSink;
+	public final fun getStdout ()Lokio/BufferedSource;
 	public final fun getStdoutLines ()Lkotlinx/coroutines/flow/Flow;
 	public final fun isAlive ()Z
 	public final fun kill ()V
 	public final fun terminate ()V
-	public final fun waitFor ()I
-	public final fun waitFor-LRDsOJo (J)Ljava/lang/Integer;
+	public final fun waitFor (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun waitFor-VtjQ1oo (JLkotlin/coroutines/Continuation;)Ljava/lang/Object;
 }
 
 public final class ksubprocess/Process$Companion {

@@ -1,16 +1,16 @@
 package ksubprocess
 
-import io.ktor.utils.io.core.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flow
+import okio.BufferedSource
 
-internal fun Input?.lines(): Flow<String> = if (this == null) {
+internal fun BufferedSource?.lines(): Flow<String> = if (this == null) {
     emptyFlow()
 } else {
     flow {
         while (true) {
-            emit(readUTF8Line() ?: return@flow)
+            emit(readUtf8Line() ?: return@flow)
         }
     }
 }
