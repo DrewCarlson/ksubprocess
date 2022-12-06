@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.dokka)
     alias(libs.plugins.binaryCompat)
     alias(libs.plugins.spotless)
+    alias(libs.plugins.completeKotlin)
     alias(libs.plugins.mavenPublish)
 }
 
@@ -15,7 +16,7 @@ version = System.getenv("GITHUB_REF")?.substringAfter("refs/tags/v", version.toS
 
 kotlin {
     jvm()
-    macosX64("macos")
+    macosX64()
     macosArm64()
     mingwX64("windows")
     linuxX64("linux") {
@@ -30,12 +31,12 @@ kotlin {
 
     sourceSets {
         all {
-            languageSettings.optIn("kotlin.RequiresOptIn")
+            languageSettings.optIn("kotlinx.coroutines.ExperimentalCoroutinesApi")
         }
         val commonMain by getting {
             dependencies {
-                implementation(libs.ktor.io)
-                implementation(libs.coroutines.core)
+                api(libs.okio.core)
+                api(libs.coroutines.core)
             }
         }
 
@@ -54,12 +55,14 @@ kotlin {
         val linuxMain by getting {
             dependsOn(posixMain)
         }
-        val macosMain by getting {
+        val macosMain by creating {
             dependsOn(posixMain)
+        }
+        val macosX64Main by getting {
+            dependsOn(macosMain)
         }
         val macosArm64Main by getting {
             dependsOn(macosMain)
-            dependsOn(posixMain)
         }
 
         val jvmTest by getting {

@@ -15,11 +15,14 @@
  */
 package ksubprocess
 
-import io.ktor.utils.io.core.*
-import io.ktor.utils.io.errors.*
 import kotlinx.cinterop.*
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import ksubprocess.io.*
+import okio.BufferedSink
+import okio.BufferedSource
+import okio.FileHandle
+import okio.buffer
 import platform.Foundation.*
 import platform.posix.*
 import kotlin.native.concurrent.*
@@ -42,7 +45,7 @@ private fun Redirect.openFds(stream: String): RedirectFds = when (this) {
         if (fd == -1) {
             throw ProcessConfigException(
                 "Error opening null file for $stream",
-                PosixException.forErrno(posixFunctionName = "open()")
+                PosixException.forErrno("open")
             )
         }
         RedirectFds(fd, stream == "stdin")
@@ -56,34 +59,25 @@ private fun Redirect.openFds(stream: String): RedirectFds = when (this) {
         if (piperes == -1) {
             throw ProcessConfigException(
                 "Error opening $stream pipe",
-                PosixException.forErrno(posixFunctionName = "pipe()")
+                PosixException.forErrno("pipe")
             )
         }
         RedirectFds(fds[0], fds[1])
     }
     is Redirect.Read -> {
-        val fd = open(file, O_RDONLY)
-        if (fd == -1) {
-            throw ProcessConfigException(
-                "Error opening input file $file for $stream",
-                PosixException.forErrno(posixFunctionName = "open()")
-            )
+        val handle = checkNotNull(NSFileHandle.fileHandleForReadingAtPath(file)) {
+            "Failed to create NSFileHandle for '$file'"
         }
-        RedirectFds(fd, -1)
+        RedirectFds(handle.fileDescriptor, -1)
     }
     is Redirect.Write -> {
-        val fd = open(
-            file,
-            if (append) O_WRONLY or O_APPEND
-            else O_WRONLY
-        )
-        if (fd == -1) {
-            throw ProcessConfigException(
-                "Error opening output file $file for $stream",
-                PosixException.forErrno(posixFunctionName = "open()")
-            )
+        if (!NSFileManager.defaultManager.fileExistsAtPath(file)) {
+            NSFileManager.defaultManager.createFileAtPath(file, null, null)
         }
-        RedirectFds(-1, fd)
+        val handle = checkNotNull(NSFileHandle.fileHandleForWritingAtPath(file)) {
+            "Failed to create NSFileHandle for '$file'"
+        }
+        RedirectFds(-1, handle.fileDescriptor)
     }
     Redirect.Stdout -> error("Redirect.Stdout must be handled separately.")
 }
@@ -144,42 +138,49 @@ actual class Process actual constructor(actual val args: ProcessArguments) {
     actual val exitCode: Int?
         get() = if (task.isRunning()) null else task.terminationStatus
 
-    actual fun waitFor(): Int {
+    actual suspend fun waitFor(): Int {
         task.waitUntilExit()
         return task.terminationStatus
     }
 
     @OptIn(ExperimentalTime::class)
-    actual fun waitFor(timeout: Duration): Int? {
+    actual suspend fun waitFor(timeout: Duration): Int? {
         require(timeout.isPositive()) { "Timeout must be positive!" }
         // there is no good blocking solution, so use an active loop with sleep in between.
-        val clk = TimeSource.Monotonic
-        val deadline = clk.markNow() + timeout
+        val end = TimeSource.Monotonic.markNow() + timeout
         while (true) {
             // return if done or now passed the deadline
             if (!task.isRunning()) return task.terminationStatus
-            if (deadline.hasPassedNow()) return null
-            // TODO select good frequency
-            memScoped {
-                val ts = alloc<timespec>()
-                ts.tv_nsec = 50 * 1000
-                nanosleep(ts.ptr, ts.ptr)
-            }
+            if (end.hasPassedNow()) return null
+            delay(POLLING_DELAY)
         }
     }
 
-    actual val stdin: Output? by lazy {
-        if (stdinFd != -1) Output(stdinFd)
-        else null
+    private val stdinHandle: FileHandle? by lazy {
+        if (stdinFd != -1) {
+            OkioNSFileHandle(true, NSFileHandle(stdinFd, true))
+        } else null
     }
-    actual val stdout: Input? by lazy {
-        if (stdoutFd != -1) Input(stdoutFd)
-        else null
+    private val stdoutHandle: FileHandle? by lazy {
+        if (stdoutFd != -1) {
+            OkioNSFileHandle(false, NSFileHandle(stdoutFd, true))
+        } else null
     }
-    actual val stderr: Input? by lazy {
-        if (stderrFd != -1) Input(stderrFd)
-        else null
+    private val stderrHandle: FileHandle? by lazy {
+        if (stderrFd != -1) {
+            OkioNSFileHandle(false, NSFileHandle(stderrFd, true))
+        } else null
     }
+
+    actual val stdin: BufferedSink? by lazy { stdinHandle?.sink()?.buffer() }
+    actual val stdout: BufferedSource? by lazy { stdoutHandle?.source()?.buffer() }
+    actual val stderr: BufferedSource? by lazy { stderrHandle?.source()?.buffer() }
+
+    actual val stdoutLines: Flow<String>
+        get() = stdout.lines()
+
+    actual val stderrLines: Flow<String>
+        get() = stderr.lines()
 
     actual fun terminate() {
         task.terminate()
@@ -189,9 +190,8 @@ actual class Process actual constructor(actual val args: ProcessArguments) {
         task.terminate()
     }
 
-    actual val stdoutLines: Flow<String>
-        get() = stdout.lines()
-
-    actual val stderrLines: Flow<String>
-        get() = stderr.lines()
+    actual fun closeStdin() {
+        stdin?.close()
+        stdinHandle?.close()
+    }
 }

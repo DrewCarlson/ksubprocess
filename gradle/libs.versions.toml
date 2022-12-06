@@ -3,6 +3,7 @@ kotlin = { strictly = "1.8.10" }
 dokka = "1.8.10"
 ktor = "2.2.4"
 shadow = "8.1.0"
+okio = "3.3.0"
 coroutines = "1.6.4"
 binary_compat = "0.13.0"
 
@@ -16,9 +17,11 @@ binaryCompat = { id = "org.jetbrains.kotlinx.binary-compatibility-validator", ve
 spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
 shadow = { id = "com.github.johnrengelman.shadow", version.ref = "shadow" }
 mavenPublish = { id = "com.vanniktech.maven.publish", version = "0.24.0" }
+completeKotlin = { id = "com.louiscad.complete-kotlin", version = "1.1.0" }
 
 [libraries]
 ktor-io = { module = "io.ktor:ktor-io", version.ref = "ktor" }
+okio-core = { module = "com.squareup.okio:okio", version.ref = "okio"}
 
 coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 coroutines-jdk8 = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-jdk8", version.ref = "coroutines" }

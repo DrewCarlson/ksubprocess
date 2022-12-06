@@ -15,14 +15,13 @@
  */
 package ksubprocess
 
-import io.ktor.utils.io.core.*
 import kotlinx.cinterop.*
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
-import ksubprocess.io.Input
-import ksubprocess.io.Output
 import ksubprocess.io.WindowsException
+import ksubprocess.io.WindowsFileHandle
+import okio.*
 import platform.windows.*
-import kotlin.native.concurrent.*
 import kotlin.time.*
 
 // read and write fds for a pipe. Also used to store other fds for convenience.
@@ -45,13 +44,13 @@ private fun Redirect.openFds(stream: String): RedirectFds = when (this) {
         saAttr.lpSecurityDescriptor = NULL
 
         val fd = CreateFileW(
-            "NUL",
-            GENERIC_READ or GENERIC_WRITE.convert(),
-            (FILE_SHARE_READ or FILE_SHARE_WRITE).convert(),
-            saAttr.ptr,
-            OPEN_EXISTING,
-            0,
-            null
+            lpFileName = "NUL",
+            dwDesiredAccess = GENERIC_READ or GENERIC_WRITE.convert(),
+            dwShareMode = (FILE_SHARE_READ or FILE_SHARE_WRITE).convert(),
+            lpSecurityAttributes = saAttr.ptr,
+            dwCreationDisposition = OPEN_EXISTING,
+            dwFlagsAndAttributes = FILE_ATTRIBUTE_NORMAL,
+            hTemplateFile = null
         )
         if (fd == INVALID_HANDLE_VALUE) {
             throw ProcessConfigException(
@@ -96,13 +95,13 @@ private fun Redirect.openFds(stream: String): RedirectFds = when (this) {
         saAttr.lpSecurityDescriptor = NULL
 
         val fd = CreateFileW(
-            file,
-            GENERIC_READ,
-            0,
-            saAttr.ptr,
-            OPEN_EXISTING,
-            0,
-            null
+            lpFileName = file,
+            dwDesiredAccess = GENERIC_READ,
+            dwShareMode = FILE_SHARE_WRITE,
+            lpSecurityAttributes = saAttr.ptr,
+            dwCreationDisposition = OPEN_EXISTING,
+            dwFlagsAndAttributes = FILE_ATTRIBUTE_NORMAL,
+            hTemplateFile = null
         )
         if (fd == INVALID_HANDLE_VALUE) {
             throw ProcessConfigException(
@@ -118,16 +117,16 @@ private fun Redirect.openFds(stream: String): RedirectFds = when (this) {
         saAttr.bInheritHandle = TRUE
         saAttr.lpSecurityDescriptor = NULL
 
-        val openmode = if (append) OPEN_ALWAYS else OPEN_ALWAYS or TRUNCATE_EXISTING
+        val openmode = if (append) OPEN_ALWAYS else CREATE_ALWAYS
 
         val fd = CreateFileW(
-            file,
-            GENERIC_WRITE,
-            0,
-            saAttr.ptr,
-            openmode.convert(),
-            0,
-            null
+            lpFileName = file,
+            dwDesiredAccess = GENERIC_WRITE.convert(),
+            dwShareMode = FILE_SHARE_WRITE,
+            lpSecurityAttributes = saAttr.ptr,
+            dwCreationDisposition = openmode.convert(),
+            dwFlagsAndAttributes = FILE_ATTRIBUTE_NORMAL,
+            hTemplateFile = null
         )
         if (fd == INVALID_HANDLE_VALUE) {
             throw ProcessConfigException(
@@ -257,12 +256,44 @@ actual class Process actual constructor(actual val args: ProcessArguments) {
         }
     }
 
+    private val stdinHandle: FileHandle? by lazy {
+        if (stdinFd == null) null else WindowsFileHandle(true, stdinFd)
+    }
+    private val stdoutHandle: FileHandle? by lazy {
+        if (stdoutFd == null) null else WindowsFileHandle(false, stdoutFd)
+    }
+    private val stderrHandle: FileHandle? by lazy {
+        if (stderrFd == null) null else WindowsFileHandle(false, stderrFd)
+    }
+
+    actual val stdin: BufferedSink? by lazy {
+        stdinHandle?.sink()?.buffer()
+    }
+    actual val stdout: BufferedSource? by lazy {
+        stdoutHandle?.source()?.buffer()
+    }
+    actual val stderr: BufferedSource? by lazy {
+        stderrHandle?.source()?.buffer()
+    }
+
+    actual val stdoutLines: Flow<String>
+        get() = stdout.lines()
+
+    actual val stderrLines: Flow<String>
+        get() = stderr.lines()
+
     // close handles when done!
     private fun cleanup() {
         childProcessHandle.close(ignoreErrors = true)
         stdinFd.close(ignoreErrors = true)
         stdoutFd.close(ignoreErrors = true)
         stderrFd.close(ignoreErrors = true)
+        runCatching { stdin?.close() }
+        runCatching { stderr?.close() }
+        runCatching { stdout?.close() }
+        runCatching { stdinHandle?.close() }
+        runCatching { stdoutHandle?.close() }
+        runCatching { stderrHandle?.close() }
     }
 
     private var _exitCode: Int? = null
@@ -289,16 +320,18 @@ actual class Process actual constructor(actual val args: ProcessArguments) {
     actual val isAlive: Boolean
         get() = exitCode == null
 
-    actual fun waitFor(): Int = when (WaitForSingleObject(childProcessHandle, INFINITE)) {
-        WAIT_FAILED -> throw ProcessException(
-            "Error waiting for subprocess",
-            WindowsException.fromLastError(functionName = "TerminateProcess")
-        )
-        else -> checkNotNull(exitCode) { "Waited for process, but it's still alive!" }
+    actual suspend fun waitFor(): Int {
+        return when (WaitForSingleObject(childProcessHandle, INFINITE)) {
+            WAIT_FAILED -> throw ProcessException(
+                "Error waiting for subprocess",
+                WindowsException.fromLastError(functionName = "TerminateProcess")
+            )
+            else -> checkNotNull(exitCode) { "Waited for process, but it's still alive!" }
+        }
     }
 
-    actual fun waitFor(timeout: Duration): Int? =
-        when (WaitForSingleObject(childProcessHandle, timeout.inWholeMilliseconds.convert())) {
+    actual suspend fun waitFor(timeout: Duration): Int? {
+        return when (WaitForSingleObject(childProcessHandle, timeout.inWholeMilliseconds.convert())) {
             WAIT_FAILED -> throw ProcessException(
                 "Error waiting for child process",
                 WindowsException.fromLastError(functionName = "TerminateProcess")
@@ -306,6 +339,7 @@ actual class Process actual constructor(actual val args: ProcessArguments) {
             WAIT_TIMEOUT.convert<DWORD>() -> null // still alive
             else -> exitCode // terminated
         }
+    }
 
     actual fun terminate() {
         if (TerminateProcess(childProcessHandle, 1) == 0) {
@@ -321,22 +355,8 @@ actual class Process actual constructor(actual val args: ProcessArguments) {
         terminate()
     }
 
-    actual val stdin: Output? by lazy {
-        if (stdinFd != INVALID_HANDLE_VALUE) Output(stdinFd)
-        else null
+    actual fun closeStdin() {
+        stdin?.close()
+        stdinHandle?.close()
     }
-    actual val stdout: Input? by lazy {
-        if (stdoutFd != INVALID_HANDLE_VALUE) Input(stdoutFd)
-        else null
-    }
-    actual val stderr: Input? by lazy {
-        if (stderrFd != INVALID_HANDLE_VALUE) Input(stderrFd)
-        else null
-    }
-
-    actual val stdoutLines: Flow<String>
-        get() = stdout.lines()
-
-    actual val stderrLines: Flow<String>
-        get() = stderr.lines()
 }

@@ -15,12 +15,11 @@
  */
 package ksubprocess.io
 
-import io.ktor.utils.io.charsets.Charsets.UTF_8
-import io.ktor.utils.io.core.*
 import kotlinx.cinterop.alloc
 import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.ptr
 import kotlinx.cinterop.value
+import okio.buffer
 import platform.windows.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -29,7 +28,7 @@ import kotlin.test.fail
 /**
  * Tests for the HANDLE-based IO functions.
  */
-class WindowsIOTest {
+class WindowsFileHandleTest {
 
     // TODO add more tests. Pipes specifically, and writing too.
     @Test
@@ -51,9 +50,10 @@ class WindowsIOTest {
             )
         }
 
-        val stream = Input(fd)
+        val sourceHandle = WindowsFileHandle(false, fd)
+        val source = sourceHandle.source().buffer()
         try {
-            val text = stream.readText(UTF_8)
+            val text = source.readUtf8()
             val expected = """
                 Line1
                 Line2
@@ -64,7 +64,8 @@ class WindowsIOTest {
                 assertEquals(ex, act)
             }
         } finally {
-            stream.close()
+            source.close()
+            sourceHandle.close()
         }
     }
 
@@ -85,20 +86,25 @@ class WindowsIOTest {
             hReadPipe.value to hWritePipe.value
         }
 
-        val readStream = Input(readPipe)
-        val writeStream = Output(writePipe)
+        val readHandle = WindowsFileHandle(false, readPipe)
+        val readStream = readHandle.source().buffer()
+        val writeHandle = WindowsFileHandle(true, writePipe)
+        val writeStream = writeHandle.sink().buffer()
         try {
             val text = "Hello World!"
 
-            writeStream.writeText(text)
+            writeStream.writeUtf8(text)
             writeStream.close()
+            writeHandle.close()
 
-            val afterPipe = readStream.readText(UTF_8)
+            val afterPipe = readStream.readUtf8()
 
             assertEquals(text, afterPipe)
         } finally {
             readStream.close()
+            readHandle.close()
             writeStream.close()
+            writeHandle.close()
         }
     }
 }

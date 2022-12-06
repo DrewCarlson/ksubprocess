@@ -15,13 +15,15 @@
  */
 package ksubprocess
 
-import io.ktor.utils.io.core.*
-import io.ktor.utils.io.streams.*
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.Flow
+import okio.*
 import java.io.File
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 import kotlin.time.Duration
+import kotlin.time.ExperimentalTime
+import kotlin.time.TimeSource
 import java.lang.Process as JProcess
 
 actual class Process actual constructor(actual val args: ProcessArguments) {
@@ -88,15 +90,19 @@ actual class Process actual constructor(actual val args: ProcessArguments) {
             null
         }
 
-    actual fun waitFor(): Int {
+    actual suspend fun waitFor(): Int {
         return impl.waitFor()
     }
 
-    actual fun waitFor(timeout: Duration): Int? {
-        // perform wait
-        val terminated = impl.waitFor(timeout.inWholeMilliseconds, TimeUnit.MILLISECONDS)
-        // return exit code as if successful
-        return if (terminated) impl.exitValue() else null
+    @OptIn(ExperimentalTime::class)
+    actual suspend fun waitFor(timeout: Duration): Int? {
+        val end = TimeSource.Monotonic.markNow() + timeout
+        while (true) {
+            // return if done or now passed the deadline
+            if (!impl.isAlive) return impl.exitValue()
+            if (end.hasPassedNow()) return null
+            delay(POLLING_DELAY)
+        }
     }
 
     actual fun terminate() {
@@ -107,18 +113,18 @@ actual class Process actual constructor(actual val args: ProcessArguments) {
         impl.destroyForcibly()
     }
 
-    actual val stdin: Output? by lazy {
-        if (args.stdin == Redirect.Pipe) impl.outputStream.asOutput()
+    actual val stdin: BufferedSink? by lazy {
+        if (args.stdin == Redirect.Pipe) impl.outputStream.sink().buffer()
         else null
     }
 
-    actual val stdout: Input? by lazy {
-        if (args.stdout == Redirect.Pipe) impl.inputStream.asInput()
+    actual val stdout: BufferedSource? by lazy {
+        if (args.stdout == Redirect.Pipe) impl.inputStream.source().buffer()
         else null
     }
 
-    actual val stderr: Input? by lazy {
-        if (args.stderr == Redirect.Pipe) impl.errorStream.asInput()
+    actual val stderr: BufferedSource? by lazy {
+        if (args.stderr == Redirect.Pipe) impl.errorStream.source().buffer()
         else null
     }
 
@@ -127,4 +133,8 @@ actual class Process actual constructor(actual val args: ProcessArguments) {
 
     actual val stderrLines: Flow<String>
         get() = stderr.lines()
+
+    actual fun closeStdin() {
+        stdin?.close()
+    }
 }

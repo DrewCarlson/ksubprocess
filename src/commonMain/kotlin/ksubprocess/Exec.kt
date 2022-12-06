@@ -15,7 +15,6 @@
  */
 package ksubprocess
 
-import io.ktor.utils.io.charsets.*
 import kotlin.time.*
 
 /**
@@ -30,13 +29,6 @@ class ExecArgumentsBuilder : ProcessArgumentBuilder() {
      * @see communicate
      */
     var input: String = ""
-
-    /**
-     * Charset to use for text communication. Defaults to UTF-8.
-     *
-     * @see communicate
-     */
-    var charset: Charset = Charsets.UTF_8
 
     /**
      * Timeout for the child process. Set to null to run without timeout.
@@ -107,7 +99,6 @@ suspend fun exec(builder: ExecArgumentsBuilder.() -> Unit): CommunicateResult {
     // communicate with it
     val res = proc.communicate(
         rab.input,
-        rab.charset,
         rab.timeout,
         rab.killTimeout
     )

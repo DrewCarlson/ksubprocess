@@ -15,14 +15,16 @@
  */
 package ksubprocess
 
-import io.ktor.utils.io.core.*
-import io.ktor.utils.io.core.Input
-import io.ktor.utils.io.errors.*
 import kotlinx.cinterop.*
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
-import ksubprocess.io.Input
-import ksubprocess.io.Output
+import ksubprocess.io.PosixException
+import ksubprocess.io.UnixFileHandle
 import ksubprocess.iop.fork_and_run
+import okio.BufferedSink
+import okio.BufferedSource
+import okio.FileHandle
+import okio.buffer
 import platform.posix.*
 import kotlin.time.*
 
@@ -47,11 +49,12 @@ private fun Redirect.openFds(stream: String): RedirectFds = when (this) {
         if (fd == -1) {
             throw ProcessConfigException(
                 "Error opening null file for $stream",
-                PosixException.forErrno(posixFunctionName = "open()")
+                PosixException.forErrno("open")
             )
         }
         RedirectFds(fd, stream == "stdin")
     }
+
     Redirect.Inherit -> RedirectFds(-1, -1)
     Redirect.Pipe -> {
         val fds = IntArray(2)
@@ -61,35 +64,39 @@ private fun Redirect.openFds(stream: String): RedirectFds = when (this) {
         if (piperes == -1) {
             throw ProcessConfigException(
                 "Error opening $stream pipe",
-                PosixException.forErrno(posixFunctionName = "pipe()")
+                PosixException.forErrno("pipe")
             )
         }
         RedirectFds(fds[0], fds[1])
     }
+
     is Redirect.Read -> {
         val fd = open(file, O_RDONLY)
         if (fd == -1) {
             throw ProcessConfigException(
                 "Error opening input file $file for $stream",
-                PosixException.forErrno(posixFunctionName = "open()")
+                PosixException.forErrno("open")
             )
         }
         RedirectFds(fd, -1)
     }
+
     is Redirect.Write -> {
         val fd = open(
             file,
-            if (append) O_WRONLY or O_APPEND
-            else O_WRONLY
+            if (append) O_WRONLY or O_APPEND or O_CREAT
+            else O_WRONLY or O_CREAT,
+            0x0777
         )
         if (fd == -1) {
             throw ProcessConfigException(
                 "Error opening output file $file for $stream",
-                PosixException.forErrno(posixFunctionName = "open()")
+                PosixException.forErrno("open")
             )
         }
         RedirectFds(-1, fd)
     }
+
     Redirect.Stdout -> throw IllegalStateException("Redirect.Stdout must be handled separately.")
 }
 
@@ -157,23 +164,23 @@ actual class Process actual constructor(
                 val env = args.environment?.let { toCStrVector(it.map { e -> "${e.key}=${e.value}" }) }
 
                 fork_and_run(
-                    executable,
-                    arguments,
-                    args.workingDirectory,
-                    env,
-                    stdout.writeFd,
-                    stderr.writeFd,
-                    stdin.readFd,
-                    stdout.readFd,
-                    stderr.readFd,
-                    stdin.writeFd
+                    executable = executable,
+                    args = arguments,
+                    cd = args.workingDirectory,
+                    env = env,
+                    stdout_fd = stdout.writeFd,
+                    stderr_fd = stderr.writeFd,
+                    stdin_fd = stdin.readFd,
+                    op_stdout = stdout.readFd,
+                    op_stderr = stderr.readFd,
+                    op_stdin = stdin.writeFd
                 )
             }
             if (pid == -1) {
                 // fork failed
                 throw ProcessException(
                     "Error staring subprocess",
-                    PosixException.forErrno(posixFunctionName = "fork()")
+                    PosixException.forErrno("fork")
                 )
             }
             childPid = pid
@@ -221,7 +228,7 @@ actual class Process actual constructor(
                 // an error
                 throw ProcessException(
                     "Error querying process state",
-                    PosixException.forErrno(posixFunctionName = "waitpid()")
+                    PosixException.forErrno("waitpid")
                 )
             }
             when (info.si_code) {
@@ -247,7 +254,7 @@ actual class Process actual constructor(
             return if (terminated) _exitStatus else null
         }
 
-    actual fun waitFor(): Int {
+    actual suspend fun waitFor(): Int {
         while (!terminated) {
             checkState(true)
         }
@@ -255,22 +262,16 @@ actual class Process actual constructor(
     }
 
     @OptIn(ExperimentalTime::class)
-    actual fun waitFor(timeout: Duration): Int? {
+    actual suspend fun waitFor(timeout: Duration): Int? {
         require(timeout.isPositive()) { "Timeout must be positive!" }
         // there is no good blocking solution, so use an active loop with sleep in between.
-        val clk = TimeSource.Monotonic
-        val deadline = clk.markNow() + timeout
+        val end = TimeSource.Monotonic.markNow() + timeout
         while (true) {
             checkState(false)
             // return if done or now passed the deadline
             if (terminated) return _exitStatus
-            if (deadline.hasPassedNow()) return null
-            // TODO select good frequency
-            memScoped {
-                val ts = alloc<timespec>()
-                ts.tv_nsec = 50 * 1000
-                nanosleep(ts.ptr, ts.ptr)
-            }
+            if (end.hasPassedNow()) return null
+            delay(POLLING_DELAY)
         }
     }
 
@@ -292,27 +293,44 @@ actual class Process actual constructor(
         if (kill(childPid, signal) != 0) {
             throw ProcessException(
                 "Error terminating process",
-                PosixException.forErrno(posixFunctionName = "kill()")
+                PosixException.forErrno("kill")
             )
         }
     }
 
-    actual val stdin: Output? by lazy {
-        if (stdinFd != -1) Output(stdinFd)
-        else null
+    private val stdinHandle: FileHandle? by lazy {
+        if (stdinFd != -1) {
+            val fd = fdopen(stdinFd, "w") ?: throw PosixException.forErrno("fdopen")
+            UnixFileHandle(true, fd)
+        } else null
     }
-    actual val stdout: Input? by lazy {
-        if (stdoutFd != -1) Input(stdoutFd)
-        else null
+    private val stdoutHandle: FileHandle? by lazy {
+        if (stdoutFd != -1) {
+            val fd = fdopen(stdoutFd, "r") ?: throw PosixException.forErrno("fdopen")
+            UnixFileHandle(false, fd)
+        } else null
     }
-    actual val stderr: Input? by lazy {
-        if (stderrFd != -1) Input(stderrFd)
-        else null
+    private val stderrHandle: FileHandle? by lazy {
+        if (stderrFd != -1) {
+            val fd = fdopen(stderrFd, "r") ?: throw PosixException.forErrno("fdopen")
+            UnixFileHandle(false, fd)
+        } else null
     }
+
+    actual val stdin: BufferedSink? by lazy { stdinHandle?.sink()?.buffer() }
+
+    actual val stdout: BufferedSource? by lazy { stdoutHandle?.source()?.buffer() }
+
+    actual val stderr: BufferedSource? by lazy { stderrHandle?.source()?.buffer() }
 
     actual val stdoutLines: Flow<String>
         get() = stdout.lines()
 
     actual val stderrLines: Flow<String>
         get() = stderr.lines()
+
+    actual fun closeStdin() {
+        stdin?.close()
+        stdinHandle?.close()
+    }
 }

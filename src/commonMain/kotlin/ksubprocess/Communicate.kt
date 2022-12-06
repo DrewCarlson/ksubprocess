@@ -15,8 +15,6 @@
  */
 package ksubprocess
 
-import io.ktor.utils.io.charsets.*
-import io.ktor.utils.io.core.*
 import kotlinx.coroutines.*
 import kotlin.time.*
 
@@ -68,24 +66,20 @@ data class CommunicateResult(
  */
 suspend fun Process.communicate(
     input: String = "",
-    charset: Charset = Charsets.UTF_8,
     timeout: Duration? = null,
     killTimeout: Duration? = null
 ): CommunicateResult = coroutineScope {
     // start output pipe collectors
     val stdoutCollector =
-        if (args.stdout == Redirect.Pipe) async { requireNotNull(stdout).readText(charset) }
+        if (args.stdout == Redirect.Pipe) async { requireNotNull(stdout).readUtf8() }
         else null
     val stderrCollector =
-        if (args.stderr == Redirect.Pipe) async { requireNotNull(stderr).readText(charset) }
+        if (args.stderr == Redirect.Pipe) async { requireNotNull(stderr).readUtf8() }
         else null
 
     // push out the input data
-    stdin?.let {
-        it.writeText(input, charset = charset)
-        // close input stream to notify child of input end
-        it.close()
-    }
+    stdin?.writeUtf8(input)
+    closeStdin()
 
     // wait with timeout if needed
     if (timeout != null && waitFor(timeout) == null) {

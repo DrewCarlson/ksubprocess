@@ -10,7 +10,7 @@ jobs:
   tests:
     strategy:
       matrix:
-        os: [ macos-latest, windows-latest, ubuntu-latest ]
+        os: [ windows-latest, ubuntu-latest, macos-latest ]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
@@ -38,7 +38,7 @@ jobs:
         name: Test Apple Targets
         if: ${{ startsWith(matrix.os, 'macos') }}
         with:
-          arguments: macosTest
+          arguments: macosX64Test
 
       - uses: gradle/gradle-build-action@v2
         name: Test Linux Target
