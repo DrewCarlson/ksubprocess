@@ -1,5 +1,5 @@
 [versions]
-kotlin = { strictly = "1.8.0" }
+kotlin = { strictly = "1.8.10" }
 dokka = "1.7.20"
 ktor = "2.2.2"
 shadow = "7.1.2"
