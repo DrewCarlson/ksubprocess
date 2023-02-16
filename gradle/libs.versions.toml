@@ -4,7 +4,7 @@ dokka = "1.7.20"
 ktor = "2.2.3"
 shadow = "7.1.2"
 coroutines = "1.6.4"
-binary_compat = "0.12.1"
+binary_compat = "0.13.0"
 
 spotless = "6.15.0"
 ktlint = "0.46.1"
