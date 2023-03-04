@@ -24,7 +24,6 @@ import ksubprocess.io.Input
 import ksubprocess.io.Output
 import ksubprocess.iop.fork_and_run
 import platform.posix.*
-import kotlin.native.concurrent.freeze
 import kotlin.time.*
 
 // safely close an fd
