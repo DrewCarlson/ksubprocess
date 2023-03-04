@@ -11,6 +11,8 @@ repositories {
     mavenCentral()
 }
 
+version = System.getenv("GITHUB_REF")?.substringAfter("refs/tags/v", version.toString()) ?: version
+
 kotlin {
     jvm()
     macosX64("macos")
