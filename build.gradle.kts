@@ -4,9 +4,8 @@ plugins {
     alias(libs.plugins.dokka)
     alias(libs.plugins.binaryCompat)
     alias(libs.plugins.spotless)
+    alias(libs.plugins.mavenPublish)
 }
-
-apply(from = "gradle/publish.gradle.kts")
 
 repositories {
     mavenCentral()
