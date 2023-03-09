@@ -18,17 +18,17 @@ package ksubprocess
 /**
  * The current process environment.
  */
-expect object Environment : Map<String, String> {
+public expect object Environment : Map<String, String> {
 
     /** true if the environment keys are case-insensitive */
-    val caseInsensitive: Boolean
+    public val caseInsensitive: Boolean
 }
 
 /**
  * Check if the given string is a valid environment key.
  */
 @Suppress("unused")
-fun Environment.validateKey(key: String) {
+internal fun Environment.validateKey(key: String) {
     require(!('=' in key || '\u0000' in key)) { "Invalid environment key: $key" }
 }
 
@@ -36,7 +36,7 @@ fun Environment.validateKey(key: String) {
  * Check if the given string is a valid environment value.
  */
 @Suppress("unused")
-fun Environment.validateValue(value: String) {
+internal fun Environment.validateValue(value: String) {
     require('\u0000' !in value) { "Invalid environment value: $value" }
 }
 
@@ -45,7 +45,7 @@ private typealias EBEntryIF = MutableMap.MutableEntry<String, String>
 /**
  * A mutable copy of the current environment.
  */
-class EnvironmentBuilder(init: Map<String, String> = Environment) : AbstractMutableMap<String, String>() {
+public class EnvironmentBuilder(init: Map<String, String> = Environment) : AbstractMutableMap<String, String>() {
 
     private val backing = mutableMapOf<EnvKey, String>()
 
@@ -71,12 +71,12 @@ class EnvironmentBuilder(init: Map<String, String> = Environment) : AbstractMuta
     }
 
     // straightforward query methods
-    override fun containsKey(key: String) = backing.containsKey(EnvKey(key))
+    override fun containsKey(key: String): Boolean = backing.containsKey(EnvKey(key))
 
-    override fun containsValue(value: String) = backing.containsValue(value)
-    override fun get(key: String) = backing[EnvKey(key)]
+    override fun containsValue(value: String): Boolean = backing.containsValue(value)
+    override fun get(key: String): String? = backing[EnvKey(key)]
 
-    override fun remove(key: String) = backing.remove(EnvKey(key))
+    override fun remove(key: String): String? = backing.remove(EnvKey(key))
 
     override fun put(key: String, value: String): String? {
         Environment.validateKey(key)

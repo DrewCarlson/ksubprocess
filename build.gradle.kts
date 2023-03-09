@@ -31,7 +31,11 @@ kotlin {
 
     sourceSets {
         all {
-            languageSettings.optIn("kotlinx.coroutines.ExperimentalCoroutinesApi")
+            explicitApi()
+            languageSettings.apply {
+                optIn("kotlinx.coroutines.ExperimentalCoroutinesApi")
+                optIn("kotlin.time.ExperimentalTime")
+            }
         }
         val commonMain by getting {
             dependencies {

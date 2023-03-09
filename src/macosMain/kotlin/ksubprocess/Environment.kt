@@ -19,9 +19,9 @@ import platform.Foundation.*
 
 @Suppress("UNCHECKED_CAST")
 @ThreadLocal
-actual object Environment : Map<String, String> by NSProcessInfo.processInfo.environment as Map<String, String> {
+public actual object Environment : Map<String, String> by NSProcessInfo.processInfo.environment as Map<String, String> {
 
-    actual val caseInsensitive: Boolean = false
+    public actual val caseInsensitive: Boolean = false
 }
 
 internal fun Map<String, String>.toEnviron() = map { "${it.key}=${it.value}" }

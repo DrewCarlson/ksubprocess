@@ -22,7 +22,7 @@ import platform.posix._wgetenv
 private data class EnvEntry(override val key: String, override val value: String) : Map.Entry<String, String>
 
 @ThreadLocal
-actual object Environment : AbstractMap<String, String>(), Map<String, String> {
+public actual object Environment : AbstractMap<String, String>(), Map<String, String> {
     // fastpath get and contains through getenv
     override fun containsKey(key: String): Boolean = _wgetenv(key.wcstr) != null
 
@@ -66,6 +66,6 @@ actual object Environment : AbstractMap<String, String>(), Map<String, String> {
         }
     }
 
-    actual val caseInsensitive: Boolean
+    public actual val caseInsensitive: Boolean
         get() = true // always on Windows
 }

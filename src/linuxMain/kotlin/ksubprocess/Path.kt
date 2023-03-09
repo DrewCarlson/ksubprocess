@@ -19,12 +19,12 @@ import platform.posix.F_OK
 import platform.posix.X_OK
 import platform.posix.access
 
-val executablePaths: List<String> by lazy {
+public val executablePaths: List<String> by lazy {
     Environment["PATH"]?.split(':') ?: listOf()
 }
 
 /**
  * Locate the named executable on the system PATH.
  */
-fun findExecutable(name: String): String? =
-    executablePaths.map { "$it/$name" }.first { access(it, F_OK or X_OK) == 0 }
+public fun findExecutable(name: String): String? =
+    executablePaths.map { "$it/$name" }.firstOrNull { access(it, F_OK or X_OK) == 0 }

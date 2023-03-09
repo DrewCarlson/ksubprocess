@@ -22,13 +22,13 @@ import kotlin.time.*
  *
  * Inherits from [ProcessArgumentBuilder] to define launch settings.
  */
-class ExecArgumentsBuilder : ProcessArgumentBuilder() {
+public class ExecArgumentsBuilder : ProcessArgumentBuilder() {
     /**
      * stdin pipe input. Ignored if stdin isn't a pipe.
      *
      * @see communicate
      */
-    var input: String = ""
+    public var input: String = ""
 
     /**
      * Timeout for the child process. Set to null to run without timeout.
@@ -37,7 +37,7 @@ class ExecArgumentsBuilder : ProcessArgumentBuilder() {
      *
      * @see communicate
      */
-    var timeout: Duration? = null
+    public var timeout: Duration? = null
         set(value) {
             require(value == null || value.isPositive()) { "Timeout must be positive!" }
             field =
@@ -52,7 +52,7 @@ class ExecArgumentsBuilder : ProcessArgumentBuilder() {
      *
      * @see communicate
      */
-    var killTimeout: Duration? = null
+    public var killTimeout: Duration? = null
         set(value) {
             require(value == null || (value.isPositive() || value == Duration.ZERO)) {
                 "Kill timeout must be positive or zero!"
@@ -67,13 +67,13 @@ class ExecArgumentsBuilder : ProcessArgumentBuilder() {
      *
      * @see CommunicateResult.check
      */
-    var check = false
+    public var check: Boolean = false
 
     // convenience builder functions
     /**
      * Fill [input] using a string builder.
      */
-    inline fun input(builder: StringBuilder.() -> Unit) {
+    public inline fun input(builder: StringBuilder.() -> Unit) {
         input = buildString(builder)
     }
 }
@@ -89,7 +89,7 @@ class ExecArgumentsBuilder : ProcessArgumentBuilder() {
  * @throws ProcessException if another process error occurs
  * @throws io.ktor.utils.io.errors.IOException if an IO error occurs in the pipes
  */
-suspend fun exec(builder: ExecArgumentsBuilder.() -> Unit): CommunicateResult {
+public suspend fun exec(builder: ExecArgumentsBuilder.() -> Unit): CommunicateResult {
     val rab = ExecArgumentsBuilder()
     rab.builder()
 

@@ -18,15 +18,15 @@ package ksubprocess
 /**
  * General subprocess exception.
  */
-open class ProcessException(message: String? = null, cause: Throwable? = null) : Exception(message, cause)
+public open class ProcessException(message: String? = null, cause: Throwable? = null) : Exception(message, cause)
 
 /**
  * Indicates a process that didn't exit cleanly.
  *
  * @param result result that caused this exception
  */
-class ProcessExitException(
-    val result: CommunicateResult
+public class ProcessExitException(
+    public val result: CommunicateResult
 ) : ProcessException(
     buildString {
         append("Process exited with exit code ")
@@ -58,4 +58,7 @@ class ProcessExitException(
  * NOTE: Since some platforms only wrap other libraries, it is not guaranteed that this exception used for all config
  * errors. You might want to catch ProcessException instead.
  */
-class ProcessConfigException(message: String? = null, cause: Throwable? = null) : ProcessException(message, cause)
+public class ProcessConfigException(
+    message: String? = null,
+    cause: Throwable? = null
+) : ProcessException(message, cause)

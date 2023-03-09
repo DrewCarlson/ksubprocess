@@ -18,34 +18,34 @@ package ksubprocess
 /**
  * Subprocess pipe redirection settings.
  */
-sealed class Redirect {
+public sealed class Redirect {
 
     /**
      * Discard output, no input.
      */
-    object Null : Redirect() {
-        override fun toString() = "discard"
+    public object Null : Redirect() {
+        public override fun toString(): String = "discard"
     }
 
     /**
      * Create a pipe.
      */
-    object Pipe : Redirect() {
-        override fun toString() = "pipe"
+    public object Pipe : Redirect() {
+        public override fun toString(): String = "pipe"
     }
 
     /**
      * Inherit from parent process.
      */
-    object Inherit : Redirect() {
-        override fun toString() = "inherit"
+    public object Inherit : Redirect() {
+        public override fun toString(): String = "inherit"
     }
 
     /**
      * Merge stderr into stdout.
      */
-    object Stdout : Redirect() {
-        override fun toString() = "stdout"
+    public object Stdout : Redirect() {
+        public override fun toString(): String = "stdout"
     }
 
     /**
@@ -53,8 +53,8 @@ sealed class Redirect {
      *
      * @param file name of input file
      */
-    class Read(val file: String) : Redirect() {
-        override fun toString() = "read from $file"
+    public class Read(public val file: String) : Redirect() {
+        public override fun toString(): String = "read from $file"
     }
 
     /**
@@ -63,8 +63,11 @@ sealed class Redirect {
      * @param file name of output file
      * @param append true to keep existing file contents
      */
-    class Write(val file: String, val append: Boolean = false) : Redirect() {
-        override fun toString() = buildString {
+    public class Write(
+        public val file: String,
+        public val append: Boolean = false
+    ) : Redirect() {
+        public override fun toString(): String = buildString {
             if (append) {
                 append("append to ")
             } else {
@@ -80,13 +83,13 @@ sealed class Redirect {
  *
  * This class is open so [ExecArgumentsBuilder] can inherit from it and add its own arguments.
  */
-open class ProcessArgumentBuilder {
+public open class ProcessArgumentBuilder {
 
     /** Command line, including executable as first element. */
-    val arguments: MutableList<String> = mutableListOf()
+    public val arguments: MutableList<String> = mutableListOf()
 
     /** Subprocess working directory or null to inherit from parent. */
-    var workingDirectory: String? = null
+    public var workingDirectory: String? = null
 
     // environment is only set if changed.
     private var environmentOrNull: MutableMap<String, String>? = null
@@ -98,7 +101,7 @@ open class ProcessArgumentBuilder {
      * completely. This design was chosen because inheriting the parent environment is more common than overriding
      * it completely.
      */
-    val environment: MutableMap<String, String>
+    public val environment: MutableMap<String, String>
         get() = environmentOrNull ?: EnvironmentBuilder().also { environmentOrNull = it }
 
     /**
@@ -106,25 +109,25 @@ open class ProcessArgumentBuilder {
      *
      * This is not a guarantee that there are changes, it can actually only check if [environment] was accessed.
      */
-    val isEnvironmentModified: Boolean
+    public val isEnvironmentModified: Boolean
         get() = environmentOrNull != null
 
     /** stdin redirection, defaults to Pipe. */
-    var stdin: Redirect = Redirect.Pipe
+    public var stdin: Redirect = Redirect.Pipe
         set(value) {
             require(!(value is Redirect.Write || value is Redirect.Stdout)) { "Unsupported redirect for stdin: $value" }
             field = value
         }
 
     /** stdout redirection, defaults to Pipe. */
-    var stdout: Redirect = Redirect.Pipe
+    public var stdout: Redirect = Redirect.Pipe
         set(value) {
             require(!(value is Redirect.Read || value is Redirect.Stdout)) { "Unsupported redirect for stdout: $value" }
             field = value
         }
 
     /** stderr redirection, defaults to Pipe. */
-    var stderr: Redirect = Redirect.Pipe
+    public var stderr: Redirect = Redirect.Pipe
         set(value) {
             require(value !is Redirect.Read) { "Unsupported redirect for stderr: $value" }
             field = value
@@ -136,7 +139,7 @@ open class ProcessArgumentBuilder {
      *
      * @param arg added argument
      */
-    fun arg(arg: String) {
+    public fun arg(arg: String) {
         arguments.add(arg)
     }
 
@@ -145,7 +148,7 @@ open class ProcessArgumentBuilder {
      *
      * @param args added arguments
      */
-    fun args(vararg args: String) {
+    public fun args(vararg args: String) {
         arguments.addAll(args)
     }
 
@@ -154,7 +157,7 @@ open class ProcessArgumentBuilder {
      *
      * @param args added arguments
      */
-    fun args(args: Collection<String>) {
+    public fun args(args: Collection<String>) {
         arguments.addAll(args)
     }
 
@@ -163,7 +166,7 @@ open class ProcessArgumentBuilder {
      *
      * @param file name of input file
      */
-    fun stdin(file: String) {
+    public fun stdin(file: String) {
         stdin = Redirect.Read(file)
     }
 
@@ -173,7 +176,7 @@ open class ProcessArgumentBuilder {
      * @param file name of output file
      * @param append true to keep existing file contents
      */
-    fun stdout(file: String, append: Boolean = false) {
+    public fun stdout(file: String, append: Boolean = false) {
         stdout = Redirect.Write(file, append)
     }
 
@@ -183,14 +186,14 @@ open class ProcessArgumentBuilder {
      * @param file name of output file
      * @param append true to keep existing file contents
      */
-    fun stderr(file: String, append: Boolean = false) {
+    public fun stderr(file: String, append: Boolean = false) {
         stderr = Redirect.Write(file, append)
     }
 
     /**
      * Create [ProcessArguments] from builder.
      */
-    fun build() = ProcessArguments(
+    public fun build(): ProcessArguments = ProcessArguments(
         arguments,
         workingDirectory,
         environmentOrNull,
@@ -211,17 +214,17 @@ open class ProcessArgumentBuilder {
  * @param stdout stdout redirection, defaults to Pipe
  * @param stderr stderr redirection, defaults to Pipe
  */
-class ProcessArguments(
+public class ProcessArguments(
     arguments: Iterable<String>,
-    val workingDirectory: String? = null,
+    public val workingDirectory: String? = null,
     environment: Map<String, String>? = null,
-    val stdin: Redirect = Redirect.Pipe,
-    val stdout: Redirect = Redirect.Pipe,
-    val stderr: Redirect = Redirect.Pipe
+    public val stdin: Redirect = Redirect.Pipe,
+    public val stdout: Redirect = Redirect.Pipe,
+    public val stderr: Redirect = Redirect.Pipe
 ) {
 
-    val arguments = arguments.toList()
-    val environment: Map<String, String>? = environment?.let { EnvironmentBuilder(it) }
+    public val arguments: List<String> = arguments.toList()
+    public val environment: Map<String, String>? = environment?.let { EnvironmentBuilder(it) }
 
     init {
         // validate arguments
@@ -240,7 +243,7 @@ class ProcessArguments(
      * @param stdout stdout redirection, defaults to Pipe
      * @param stderr stderr redirection, defaults to Pipe
      */
-    constructor(
+    public constructor(
         vararg arguments: String,
         workingDirectory: String? = null,
         environment: Map<String, String>? = null,
@@ -255,5 +258,5 @@ class ProcessArguments(
  *
  * @param builder builder callback
  */
-inline fun ProcessArguments(builder: ProcessArgumentBuilder.() -> Unit) =
+public inline fun ProcessArguments(builder: ProcessArgumentBuilder.() -> Unit): ProcessArguments =
     ProcessArgumentBuilder().apply(builder).build()

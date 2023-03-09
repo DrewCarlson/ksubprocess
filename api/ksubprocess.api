@@ -59,11 +59,6 @@ public final class ksubprocess/EnvironmentBuilder : kotlin/collections/AbstractM
 	public fun remove (Ljava/lang/String;Ljava/lang/String;)Z
 }
 
-public final class ksubprocess/EnvironmentKt {
-	public static final fun validateKey (Lksubprocess/Environment;Ljava/lang/String;)V
-	public static final fun validateValue (Lksubprocess/Environment;Ljava/lang/String;)V
-}
-
 public final class ksubprocess/ExecArgumentsBuilder : ksubprocess/ProcessArgumentBuilder {
 	public fun <init> ()V
 	public final fun getCheck ()Z
@@ -82,7 +77,6 @@ public final class ksubprocess/ExecKt {
 }
 
 public final class ksubprocess/Process {
-	public static final field Companion Lksubprocess/Process$Companion;
 	public fun <init> (Lksubprocess/ProcessArguments;)V
 	public final fun closeStdin ()V
 	public final fun getArgs ()Lksubprocess/ProcessArguments;
@@ -97,9 +91,6 @@ public final class ksubprocess/Process {
 	public final fun terminate ()V
 	public final fun waitFor (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun waitFor-VtjQ1oo (JLkotlin/coroutines/Continuation;)Ljava/lang/Object;
-}
-
-public final class ksubprocess/Process$Companion {
 }
 
 public class ksubprocess/ProcessArgumentBuilder {

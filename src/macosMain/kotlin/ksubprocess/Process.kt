@@ -82,7 +82,7 @@ private fun Redirect.openFds(stream: String): RedirectFds = when (this) {
     Redirect.Stdout -> error("Redirect.Stdout must be handled separately.")
 }
 
-actual class Process actual constructor(actual val args: ProcessArguments) {
+public actual class Process actual constructor(public actual val args: ProcessArguments) {
 
     private val task = NSTask()
 
@@ -132,19 +132,18 @@ actual class Process actual constructor(actual val args: ProcessArguments) {
         }
     }
 
-    actual val isAlive: Boolean
+    public actual val isAlive: Boolean
         get() = task.isRunning()
 
-    actual val exitCode: Int?
+    public actual val exitCode: Int?
         get() = if (task.isRunning()) null else task.terminationStatus
 
-    actual suspend fun waitFor(): Int {
+    public actual suspend fun waitFor(): Int {
         task.waitUntilExit()
         return task.terminationStatus
     }
 
-    @OptIn(ExperimentalTime::class)
-    actual suspend fun waitFor(timeout: Duration): Int? {
+    public actual suspend fun waitFor(timeout: Duration): Int? {
         require(timeout.isPositive()) { "Timeout must be positive!" }
         // there is no good blocking solution, so use an active loop with sleep in between.
         val end = TimeSource.Monotonic.markNow() + timeout
@@ -172,25 +171,25 @@ actual class Process actual constructor(actual val args: ProcessArguments) {
         } else null
     }
 
-    actual val stdin: BufferedSink? by lazy { stdinHandle?.sink()?.buffer() }
-    actual val stdout: BufferedSource? by lazy { stdoutHandle?.source()?.buffer() }
-    actual val stderr: BufferedSource? by lazy { stderrHandle?.source()?.buffer() }
+    public actual val stdin: BufferedSink? by lazy { stdinHandle?.sink()?.buffer() }
+    public actual val stdout: BufferedSource? by lazy { stdoutHandle?.source()?.buffer() }
+    public actual val stderr: BufferedSource? by lazy { stderrHandle?.source()?.buffer() }
 
-    actual val stdoutLines: Flow<String>
+    public actual val stdoutLines: Flow<String>
         get() = stdout.lines()
 
-    actual val stderrLines: Flow<String>
+    public actual val stderrLines: Flow<String>
         get() = stderr.lines()
 
-    actual fun terminate() {
+    public actual fun terminate() {
         task.terminate()
     }
 
-    actual fun kill() {
+    public actual fun kill() {
         task.terminate()
     }
 
-    actual fun closeStdin() {
+    public actual fun closeStdin() {
         stdin?.close()
         stdinHandle?.close()
     }

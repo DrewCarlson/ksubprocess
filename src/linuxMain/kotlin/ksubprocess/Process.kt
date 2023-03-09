@@ -109,8 +109,8 @@ private fun MemScope.toCStrVector(data: List<String>): CArrayPointer<CPointerVar
     return res
 }
 
-actual class Process actual constructor(
-    actual val args: ProcessArguments
+public actual class Process actual constructor(
+    public actual val args: ProcessArguments
 ) {
 
     // set to true when done
@@ -243,26 +243,25 @@ actual class Process actual constructor(
         }
     }
 
-    actual val isAlive: Boolean
+    public actual val isAlive: Boolean
         get() {
             checkState()
             return !terminated
         }
-    actual val exitCode: Int?
+    public actual val exitCode: Int?
         get() {
             checkState()
             return if (terminated) _exitStatus else null
         }
 
-    actual suspend fun waitFor(): Int {
+    public actual suspend fun waitFor(): Int {
         while (!terminated) {
             checkState(true)
         }
         return _exitStatus
     }
 
-    @OptIn(ExperimentalTime::class)
-    actual suspend fun waitFor(timeout: Duration): Int? {
+    public actual suspend fun waitFor(timeout: Duration): Int? {
         require(timeout.isPositive()) { "Timeout must be positive!" }
         // there is no good blocking solution, so use an active loop with sleep in between.
         val end = TimeSource.Monotonic.markNow() + timeout
@@ -275,11 +274,11 @@ actual class Process actual constructor(
         }
     }
 
-    actual fun terminate() {
+    public actual fun terminate() {
         sendSignal(SIGTERM)
     }
 
-    actual fun kill() {
+    public actual fun kill() {
         sendSignal(SIGKILL)
     }
 
@@ -288,7 +287,7 @@ actual class Process actual constructor(
      *
      * @param signal signal number
      */
-    fun sendSignal(signal: Int) {
+    public fun sendSignal(signal: Int) {
         if (terminated) return
         if (kill(childPid, signal) != 0) {
             throw ProcessException(
@@ -317,19 +316,19 @@ actual class Process actual constructor(
         } else null
     }
 
-    actual val stdin: BufferedSink? by lazy { stdinHandle?.sink()?.buffer() }
+    public actual val stdin: BufferedSink? by lazy { stdinHandle?.sink()?.buffer() }
 
-    actual val stdout: BufferedSource? by lazy { stdoutHandle?.source()?.buffer() }
+    public actual val stdout: BufferedSource? by lazy { stdoutHandle?.source()?.buffer() }
 
-    actual val stderr: BufferedSource? by lazy { stderrHandle?.source()?.buffer() }
+    public actual val stderr: BufferedSource? by lazy { stderrHandle?.source()?.buffer() }
 
-    actual val stdoutLines: Flow<String>
+    public actual val stdoutLines: Flow<String>
         get() = stdout.lines()
 
-    actual val stderrLines: Flow<String>
+    public actual val stderrLines: Flow<String>
         get() = stderr.lines()
 
-    actual fun closeStdin() {
+    public actual fun closeStdin() {
         stdin?.close()
         stdinHandle?.close()
     }

@@ -46,13 +46,13 @@ internal class OkioNSFileHandle(
     }
 }
 
-fun NSData.toByteArray(): ByteArray = ByteArray(this@toByteArray.length.toInt()).apply {
+internal fun NSData.toByteArray(): ByteArray = ByteArray(this@toByteArray.length.toInt()).apply {
     usePinned {
         memcpy(it.addressOf(0), this@toByteArray.bytes, this@toByteArray.length)
     }
 }
 
-fun ByteArray.toNSData(): NSData? = memScoped {
+internal fun ByteArray.toNSData(): NSData? = memScoped {
     val string = NSString.create(string = decodeToString())
     return string.dataUsingEncoding(NSUTF8StringEncoding)
 }

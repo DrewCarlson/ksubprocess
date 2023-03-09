@@ -16,7 +16,7 @@
 package ksubprocess
 
 // this is just a thin wrapper around System.getenv()
-actual object Environment : AbstractMap<String, String>(), Map<String, String> {
+public actual object Environment : AbstractMap<String, String>(), Map<String, String> {
 
     override fun get(key: String): String? = System.getenv(key)
     override fun containsKey(key: String): Boolean = System.getenv(key) != null
@@ -24,7 +24,7 @@ actual object Environment : AbstractMap<String, String>(), Map<String, String> {
     override val entries: Set<Map.Entry<String, String>>
         get() = System.getenv().entries
 
-    actual val caseInsensitive: Boolean by lazy {
+    public actual val caseInsensitive: Boolean by lazy {
         val osName = System.getProperty("os.name")
         osName.startsWith("Windows")
     }

@@ -139,7 +139,7 @@ private fun Redirect.openFds(stream: String): RedirectFds = when (this) {
     Redirect.Stdout -> error("Redirect.Stdout must be handled separately.")
 }
 
-actual class Process actual constructor(actual val args: ProcessArguments) {
+public actual class Process actual constructor(public actual val args: ProcessArguments) {
 
     private val childProcessHandle: HANDLE
 
@@ -297,7 +297,7 @@ actual class Process actual constructor(actual val args: ProcessArguments) {
     }
 
     private var _exitCode: Int? = null
-    actual val exitCode: Int?
+    public actual val exitCode: Int?
         get() {
             if (_exitCode == null) {
                 // query process
@@ -317,10 +317,10 @@ actual class Process actual constructor(actual val args: ProcessArguments) {
             return _exitCode
         }
 
-    actual val isAlive: Boolean
+    public actual val isAlive: Boolean
         get() = exitCode == null
 
-    actual suspend fun waitFor(): Int {
+    public actual suspend fun waitFor(): Int {
         return when (WaitForSingleObject(childProcessHandle, INFINITE)) {
             WAIT_FAILED -> throw ProcessException(
                 "Error waiting for subprocess",
@@ -330,7 +330,7 @@ actual class Process actual constructor(actual val args: ProcessArguments) {
         }
     }
 
-    actual suspend fun waitFor(timeout: Duration): Int? {
+    public actual suspend fun waitFor(timeout: Duration): Int? {
         return when (WaitForSingleObject(childProcessHandle, timeout.inWholeMilliseconds.convert())) {
             WAIT_FAILED -> throw ProcessException(
                 "Error waiting for child process",

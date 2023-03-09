@@ -26,7 +26,7 @@ internal val POLLING_DELAY = 50.milliseconds
  * A child process.
  *
  */
-expect class Process
+public expect class Process
 /**
  * Launch process using the specified arguments.
  *
@@ -36,19 +36,19 @@ expect class Process
 constructor(args: ProcessArguments) {
 
     /** Launch arguments used to start this process. */
-    val args: ProcessArguments
+    public val args: ProcessArguments
 
     /** Check if the process is still running. */
-    val isAlive: Boolean
+    public val isAlive: Boolean
 
     /** Exit code of terminated process, or `null` if the process is still running. */
-    val exitCode: Int?
+    public val exitCode: Int?
 
     /**
      * Wait for the process to terminate.
      * @return exit code
      */
-    suspend fun waitFor(): Int
+    public suspend fun waitFor(): Int
 
     /**
      * Wait for the process to terminate, using a timeout.
@@ -56,41 +56,41 @@ constructor(args: ProcessArguments) {
      * @param timeout wait timeout duration
      * @return exit code or null if the process is still running
      */
-    suspend fun waitFor(timeout: Duration): Int?
+    public suspend fun waitFor(timeout: Duration): Int?
 
     /** stdin pipe if requested. */
-    val stdin: BufferedSink?
+    public val stdin: BufferedSink?
 
     /** stdout pipe if requested. */
-    val stdout: BufferedSource?
+    public val stdout: BufferedSource?
 
     /** stderr pipe if requested. */
-    val stderr: BufferedSource?
+    public val stderr: BufferedSource?
 
     /** stdout lines if requested. */
-    val stdoutLines: Flow<String>
+    public val stdoutLines: Flow<String>
 
     /** stderr lines if requested. */
-    val stderrLines: Flow<String>
+    public val stderrLines: Flow<String>
 
     /**
      * Terminate the child process.
      *
      * This method attempts to do so gracefully if the operating system is capable of doing so.
      */
-    fun terminate()
+    public fun terminate()
 
     /**
      * Kill the child process.
      *
      * This method attempts to do so forcefully if the operating system is capable of doing so.
      */
-    fun kill()
+    public fun kill()
 
     /**
      * Close stdin handles and free resources so allow process to complete.
      */
-    fun closeStdin()
+    public fun closeStdin()
 }
 
 /**
@@ -99,5 +99,5 @@ constructor(args: ProcessArguments) {
  * @param builder builder callback
  * @throws ProcessException if the launch failed
  */
-inline fun Process(builder: ProcessArgumentBuilder.() -> Unit) =
+public inline fun Process(builder: ProcessArgumentBuilder.() -> Unit): Process =
     Process(ProcessArguments(builder))

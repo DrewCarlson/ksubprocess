@@ -20,15 +20,13 @@ import kotlinx.coroutines.flow.Flow
 import okio.*
 import java.io.File
 import java.io.IOException
-import java.util.concurrent.TimeUnit
 import kotlin.time.Duration
-import kotlin.time.ExperimentalTime
 import kotlin.time.TimeSource
 import java.lang.Process as JProcess
 
-actual class Process actual constructor(actual val args: ProcessArguments) {
+public actual class Process actual constructor(public actual val args: ProcessArguments) {
 
-    companion object {
+    private companion object {
         @JvmStatic
         private val NULL_FILE = File(
             if (System.getProperty("os.name").startsWith("Windows")) "NUL"
@@ -81,21 +79,20 @@ actual class Process actual constructor(actual val args: ProcessArguments) {
         }
     }
 
-    actual val isAlive: Boolean
+    public actual val isAlive: Boolean
         get() = impl.isAlive
-    actual val exitCode: Int?
+    public actual val exitCode: Int?
         get() = try {
             impl.exitValue()
         } catch (e: IllegalThreadStateException) {
             null
         }
 
-    actual suspend fun waitFor(): Int {
+    public actual suspend fun waitFor(): Int {
         return impl.waitFor()
     }
 
-    @OptIn(ExperimentalTime::class)
-    actual suspend fun waitFor(timeout: Duration): Int? {
+    public actual suspend fun waitFor(timeout: Duration): Int? {
         val end = TimeSource.Monotonic.markNow() + timeout
         while (true) {
             // return if done or now passed the deadline
@@ -105,36 +102,36 @@ actual class Process actual constructor(actual val args: ProcessArguments) {
         }
     }
 
-    actual fun terminate() {
+    public actual fun terminate() {
         impl.destroy()
     }
 
-    actual fun kill() {
+    public actual fun kill() {
         impl.destroyForcibly()
     }
 
-    actual val stdin: BufferedSink? by lazy {
+    public actual val stdin: BufferedSink? by lazy {
         if (args.stdin == Redirect.Pipe) impl.outputStream.sink().buffer()
         else null
     }
 
-    actual val stdout: BufferedSource? by lazy {
+    public actual val stdout: BufferedSource? by lazy {
         if (args.stdout == Redirect.Pipe) impl.inputStream.source().buffer()
         else null
     }
 
-    actual val stderr: BufferedSource? by lazy {
+    public actual val stderr: BufferedSource? by lazy {
         if (args.stderr == Redirect.Pipe) impl.errorStream.source().buffer()
         else null
     }
 
-    actual val stdoutLines: Flow<String>
+    public actual val stdoutLines: Flow<String>
         get() = stdout.lines()
 
-    actual val stderrLines: Flow<String>
+    public actual val stderrLines: Flow<String>
         get() = stderr.lines()
 
-    actual fun closeStdin() {
+    public actual fun closeStdin() {
         stdin?.close()
     }
 }

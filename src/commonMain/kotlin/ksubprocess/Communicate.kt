@@ -25,7 +25,7 @@ import kotlin.time.*
  * @param output stdout pipe output, or empty if stdout wasn't a pipe
  * @param errors stderr pipe output, or empty if stderr wasn't a pipe
  */
-data class CommunicateResult(
+public data class CommunicateResult(
     val exitCode: Int,
     val output: String,
     val errors: String
@@ -36,7 +36,7 @@ data class CommunicateResult(
      *
      * @throws ProcessExitException if `exitCode != 0`
      */
-    fun check() {
+    public fun check() {
         if (exitCode != 0) throw ProcessExitException(this)
     }
 }
@@ -53,18 +53,16 @@ data class CommunicateResult(
  * timeout for graceful termination can be set, afterwards the child will be [killed][Process.kill]. The kill timeout
  * can also be set to [Duration.ZERO] to skip the graceful termination attempt and kill the child directly.
  *
- *
  * @param input stdin pipe input. Ignored if stdin isn't a pipe
- * @param charset charset to use for text communication. Defaults to UTF-8
  * @param timeout timeout for child process if desired
  * @param killTimeout extra timeout before the terminated child is killed. May be ZERO to kill directly
  *
  * @return result of communication
  *
  * @throws ProcessException if another process error occurs
- * @throws io.ktor.utils.io.errors.IOException if an IO error occurs in the pipes
+ * @throws okio.IOException if an IO error occurs in the pipes
  */
-suspend fun Process.communicate(
+public suspend fun Process.communicate(
     input: String = "",
     timeout: Duration? = null,
     killTimeout: Duration? = null
