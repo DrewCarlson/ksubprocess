@@ -16,7 +16,6 @@
 package ksubprocess
 
 import kotlinx.cinterop.*
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import ksubprocess.io.WindowsException
 import ksubprocess.io.WindowsFileHandle
@@ -266,20 +265,20 @@ public actual class Process actual constructor(public actual val args: ProcessAr
         if (stderrFd == null) null else WindowsFileHandle(false, stderrFd)
     }
 
-    actual val stdin: BufferedSink? by lazy {
+    public actual val stdin: BufferedSink? by lazy {
         stdinHandle?.sink()?.buffer()
     }
-    actual val stdout: BufferedSource? by lazy {
+    public actual val stdout: BufferedSource? by lazy {
         stdoutHandle?.source()?.buffer()
     }
-    actual val stderr: BufferedSource? by lazy {
+    public actual val stderr: BufferedSource? by lazy {
         stderrHandle?.source()?.buffer()
     }
 
-    actual val stdoutLines: Flow<String>
+    public actual val stdoutLines: Flow<String>
         get() = stdout.lines()
 
-    actual val stderrLines: Flow<String>
+    public actual val stderrLines: Flow<String>
         get() = stderr.lines()
 
     // close handles when done!
@@ -341,7 +340,7 @@ public actual class Process actual constructor(public actual val args: ProcessAr
         }
     }
 
-    actual fun terminate() {
+    public actual fun terminate() {
         if (TerminateProcess(childProcessHandle, 1) == 0) {
             throw ProcessException(
                 "Error terminating child process",
@@ -350,12 +349,12 @@ public actual class Process actual constructor(public actual val args: ProcessAr
         }
     }
 
-    actual fun kill() {
+    public actual fun kill() {
         // Windows has no difference here
         terminate()
     }
 
-    actual fun closeStdin() {
+    public actual fun closeStdin() {
         stdin?.close()
         stdinHandle?.close()
     }
