@@ -20,9 +20,9 @@ import platform.windows.*
 
 private fun MAKELANGID(p: Int, s: Int) = ((s shl 10) or p).toUInt()
 
-class WindowsException(val errorCode: DWORD, message: String) : Exception("$errorCode: $message") {
+public class WindowsException(public val errorCode: DWORD, message: String) : Exception("$errorCode: $message") {
 
-    companion object {
+    internal companion object {
         fun fromLastError(
             errorCode: DWORD = GetLastError(),
             functionName: String?

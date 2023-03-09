@@ -1,7 +1,6 @@
 package ksubprocess
 
 import kotlinx.cinterop.*
-import okio.ByteString.Companion.toByteString
 import okio.FileHandle
 import platform.Foundation.*
 import platform.posix.memcpy

@@ -84,7 +84,7 @@ spotless {
         ktlint(libs.versions.ktlint.get())
             .setUseExperimental(true)
             .editorConfigOverride(mapOf(
-                "disabled_rules" to "no-wildcard-imports,no-unused-imports,trailing-comma,filename"
+                "disabled_rules" to "no-wildcard-imports,trailing-comma,filename"
             ))
     }
 }
