@@ -16,7 +16,7 @@ dokka = { id = "org.jetbrains.dokka", version.ref = "dokka" }
 binaryCompat = { id = "org.jetbrains.kotlinx.binary-compatibility-validator", version.ref = "binary_compat" }
 spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
 shadow = { id = "com.github.johnrengelman.shadow", version.ref = "shadow" }
-mavenPublish = { id = "com.vanniktech.maven.publish", version = "0.24.0" }
+mavenPublish = { id = "com.vanniktech.maven.publish", version = "0.25.0" }
 completeKotlin = { id = "com.louiscad.complete-kotlin", version = "1.1.0" }
 
 [libraries]
