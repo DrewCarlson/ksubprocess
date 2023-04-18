@@ -5,7 +5,7 @@ ktor = "2.2.4"
 shadow = "8.1.1"
 okio = "3.3.0"
 coroutines = "1.6.4"
-binary_compat = "0.13.0"
+binary_compat = "0.13.1"
 
 spotless = "6.15.0"
 ktlint = "0.46.1"
