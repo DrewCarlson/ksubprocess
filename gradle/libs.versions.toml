@@ -8,7 +8,7 @@ coroutines = "1.7.3"
 binary_compat = "0.13.2"
 
 spotless = "6.20.0"
-ktlint = "0.46.1"
+ktlint = "0.50.0"
 
 [plugins]
 multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
