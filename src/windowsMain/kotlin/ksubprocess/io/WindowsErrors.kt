@@ -39,7 +39,7 @@ public class WindowsException(public val errorCode: DWORD, message: String) : Ex
                 errorCode,
                 MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
                 interpretCPointer(msgBufHolder.rawPtr),
-                0,
+                0u,
                 null
             )
 

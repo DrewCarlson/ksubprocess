@@ -35,6 +35,7 @@ kotlin {
             languageSettings.apply {
                 optIn("kotlinx.coroutines.ExperimentalCoroutinesApi")
                 optIn("kotlin.time.ExperimentalTime")
+                optIn("kotlinx.cinterop.ExperimentalForeignApi")
             }
         }
         val commonMain by getting {
@@ -82,7 +83,7 @@ spotless {
     kotlin {
         target("**/**.kt")
         ktlint(libs.versions.ktlint.get())
-            .setUseExperimental(true)
+            //.setUseExperimental(true)
             .editorConfigOverride(mapOf(
                 "disabled_rules" to "no-wildcard-imports,trailing-comma,filename"
             ))

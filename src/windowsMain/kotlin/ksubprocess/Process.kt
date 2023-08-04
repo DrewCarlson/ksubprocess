@@ -47,8 +47,8 @@ private fun Redirect.openFds(stream: String): RedirectFds = when (this) {
             dwDesiredAccess = GENERIC_READ or GENERIC_WRITE.convert(),
             dwShareMode = (FILE_SHARE_READ or FILE_SHARE_WRITE).convert(),
             lpSecurityAttributes = saAttr.ptr,
-            dwCreationDisposition = OPEN_EXISTING,
-            dwFlagsAndAttributes = FILE_ATTRIBUTE_NORMAL,
+            dwCreationDisposition = OPEN_EXISTING.convert(),
+            dwFlagsAndAttributes = FILE_ATTRIBUTE_NORMAL.convert(),
             hTemplateFile = null
         )
         if (fd == INVALID_HANDLE_VALUE) {
@@ -78,7 +78,7 @@ private fun Redirect.openFds(stream: String): RedirectFds = when (this) {
         }
         // only inherit relevant handle
         val noInheritSide = if (stream == "stdin") hWritePipe.value else hReadPipe.value
-        if (SetHandleInformation(noInheritSide, HANDLE_FLAG_INHERIT, 0u) == 0) {
+        if (SetHandleInformation(noInheritSide, HANDLE_FLAG_INHERIT.convert(), 0u) == 0) {
             throw ProcessException(
                 "Error disinheriting $stream pipe local side",
                 WindowsException.fromLastError(functionName = "SetHandleInformation")
@@ -96,10 +96,10 @@ private fun Redirect.openFds(stream: String): RedirectFds = when (this) {
         val fd = CreateFileW(
             lpFileName = file,
             dwDesiredAccess = GENERIC_READ,
-            dwShareMode = FILE_SHARE_WRITE,
+            dwShareMode = FILE_SHARE_WRITE.convert(),
             lpSecurityAttributes = saAttr.ptr,
-            dwCreationDisposition = OPEN_EXISTING,
-            dwFlagsAndAttributes = FILE_ATTRIBUTE_NORMAL,
+            dwCreationDisposition = OPEN_EXISTING.convert(),
+            dwFlagsAndAttributes = FILE_ATTRIBUTE_NORMAL.convert(),
             hTemplateFile = null
         )
         if (fd == INVALID_HANDLE_VALUE) {
@@ -121,10 +121,10 @@ private fun Redirect.openFds(stream: String): RedirectFds = when (this) {
         val fd = CreateFileW(
             lpFileName = file,
             dwDesiredAccess = GENERIC_WRITE.convert(),
-            dwShareMode = FILE_SHARE_WRITE,
+            dwShareMode = FILE_SHARE_WRITE.convert(),
             lpSecurityAttributes = saAttr.ptr,
             dwCreationDisposition = openmode.convert(),
-            dwFlagsAndAttributes = FILE_ATTRIBUTE_NORMAL,
+            dwFlagsAndAttributes = FILE_ATTRIBUTE_NORMAL.convert(),
             hTemplateFile = null
         )
         if (fd == INVALID_HANDLE_VALUE) {
@@ -210,7 +210,7 @@ public actual class Process actual constructor(public actual val args: ProcessAr
                     null, // process security attributes
                     null, // primary thread security attributes
                     TRUE, // handles are inherited
-                    CREATE_UNICODE_ENVIRONMENT, // creation flags
+                    CREATE_UNICODE_ENVIRONMENT.convert(), // creation flags
                     envBlock, // use environment
                     args.workingDirectory, // use current directory if any (null auto propagation)
                     startInfo.ptr, // STARTUPINFO pointer
@@ -341,7 +341,7 @@ public actual class Process actual constructor(public actual val args: ProcessAr
     }
 
     public actual fun terminate() {
-        if (TerminateProcess(childProcessHandle, 1) == 0) {
+        if (TerminateProcess(childProcessHandle, 1u) == 0) {
             throw ProcessException(
                 "Error terminating child process",
                 WindowsException.fromLastError(functionName = "TerminateProcess")
