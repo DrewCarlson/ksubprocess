@@ -18,6 +18,7 @@ package ksubprocess
 import kotlinx.cinterop.*
 import platform.posix._wenviron
 import platform.posix._wgetenv
+import kotlin.native.concurrent.ThreadLocal
 
 private data class EnvEntry(override val key: String, override val value: String) : Map.Entry<String, String>
 

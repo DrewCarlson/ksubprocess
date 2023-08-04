@@ -20,6 +20,7 @@ import kotlinx.cinterop.plus
 import kotlinx.cinterop.toKString
 import platform.posix.__environ
 import platform.posix.getenv
+import kotlin.native.concurrent.ThreadLocal
 
 private data class EnvEntry(override val key: String, override val value: String) : Map.Entry<String, String>
 
