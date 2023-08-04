@@ -63,7 +63,7 @@ internal class WindowsFileHandle(
                 hFile = file,
                 lDistanceToMove = size.toInt(),
                 lpDistanceToMoveHigh = distanceToMoveHigh.ptr,
-                dwMoveMethod = FILE_BEGIN
+                dwMoveMethod = FILE_BEGIN.convert()
             )
             if (movePointerResult == 0U) {
                 throw WindowsException.fromLastError(functionName = "SetFilePointer")

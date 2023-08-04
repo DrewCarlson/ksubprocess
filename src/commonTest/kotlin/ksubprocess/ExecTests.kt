@@ -16,7 +16,6 @@
 package ksubprocess
 
 import kotlinx.coroutines.Dispatchers.Default
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.invoke
 import kotlinx.coroutines.test.runTest
 import kotlin.js.JsName
@@ -29,7 +28,6 @@ import kotlin.time.Duration.Companion.seconds
  *
  * Also implicitly tests [communicate], since exec itself doesn't do much.
  */
-@OptIn(ExperimentalCoroutinesApi::class)
 class ExecTests {
 
     @Test
@@ -128,7 +126,6 @@ class ExecTests {
     }
 
     @Ignore
-    @OptIn(ExperimentalTime::class)
     @Test
     @JsName("testTimeout")
     fun `Timeout and termination`() = runTest {

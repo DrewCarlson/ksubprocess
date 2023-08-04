@@ -15,10 +15,7 @@
  */
 package ksubprocess.io
 
-import kotlinx.cinterop.alloc
-import kotlinx.cinterop.memScoped
-import kotlinx.cinterop.ptr
-import kotlinx.cinterop.value
+import kotlinx.cinterop.*
 import okio.buffer
 import platform.windows.*
 import kotlin.test.Test
@@ -37,10 +34,10 @@ class WindowsFileHandleTest {
         val fd = CreateFileW(
             "testfiles/TestInput.txt",
             GENERIC_READ,
-            0,
+            0u,
             null,
-            OPEN_EXISTING,
-            FILE_ATTRIBUTE_READONLY,
+            OPEN_EXISTING.convert(),
+            FILE_ATTRIBUTE_READONLY.convert(),
             null
         )
         if (fd == INVALID_HANDLE_VALUE) {

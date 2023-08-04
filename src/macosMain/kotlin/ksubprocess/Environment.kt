@@ -16,6 +16,7 @@
 package ksubprocess
 
 import platform.Foundation.*
+import kotlin.native.concurrent.ThreadLocal
 
 @Suppress("UNCHECKED_CAST")
 @ThreadLocal
