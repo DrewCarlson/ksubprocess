@@ -125,7 +125,6 @@ class ExecTests {
         }
     }
 
-    @Ignore
     @Test
     @JsName("testTimeout")
     fun `Timeout and termination`() = runTest {

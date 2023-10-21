@@ -229,7 +229,6 @@ class ProcessTests {
         assertTrue(actAbsWD?.endsWith(wd) ?: false, "Working directory $actAbsWD should be $wd")
     }
 
-    @Ignore
     @Test
     @JsName("testWaitForTimeout")
     fun `waitFor with timeout`() = runTest {
@@ -237,7 +236,7 @@ class ProcessTests {
             testProgram("SleeperKt")
 
             // sleep time
-            arg("4")
+            arg("2")
         }
         // alive initially
         assertTrue(proc.isAlive, "Process died before first wait")
@@ -248,7 +247,7 @@ class ProcessTests {
         assertNull(proc.exitCode, "Exit code should be unknown since process is still alive")
 
         // wait another 3 seconds max - this should work
-        assertEquals(0, proc.waitFor(4.seconds), "Should succeed since the subprocess takes less time")
+        assertEquals(0, proc.waitFor(2.seconds), "Should succeed since the subprocess takes less time")
         assertFalse(proc.isAlive, "Process should now be stopped")
         assertEquals(0, proc.exitCode, "Process should have exited normally")
     }
