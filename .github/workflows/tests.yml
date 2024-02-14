@@ -28,25 +28,25 @@ jobs:
             %USERPROFILE%\.gradle
           key: ${{ runner.os }}-${{ hashFiles('gradle.properties') }}
 
-      - uses: gradle/gradle-build-action@v2
+      - uses: gradle/gradle-build-action@v3
         name: Test Windows Target
         if: ${{ startsWith(matrix.os, 'windows') }}
         with:
           arguments: windowsTest
 
-      - uses: gradle/gradle-build-action@v2
+      - uses: gradle/gradle-build-action@v3
         name: Test Apple Targets
         if: ${{ startsWith(matrix.os, 'macos') }}
         with:
           arguments: macosX64Test
 
-      - uses: gradle/gradle-build-action@v2
+      - uses: gradle/gradle-build-action@v3
         name: Test Linux Target
         if: ${{ startsWith(matrix.os, 'ubuntu') }}
         with:
           arguments: linuxX64Test
 
-      - uses: gradle/gradle-build-action@v2
+      - uses: gradle/gradle-build-action@v3
         name: Test JVM Target
         with:
           arguments: jvmTest
