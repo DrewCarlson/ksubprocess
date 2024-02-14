@@ -19,7 +19,7 @@ kotlin {
     macosX64()
     macosArm64()
     mingwX64("windows")
-    linuxX64("linux") {
+    configure(listOf(linuxX64(), linuxArm64())) {
         compilations.named("main") {
             cinterops {
                 create("runprocess") {
@@ -27,6 +27,12 @@ kotlin {
                 }
             }
         }
+    }
+
+    applyDefaultHierarchyTemplate()
+
+    compilerOptions {
+        freeCompilerArgs.add("-Xexpect-actual-classes")
     }
 
     sourceSets {
@@ -39,14 +45,14 @@ kotlin {
                 optIn("kotlinx.cinterop.BetaInteropApi")
             }
         }
-        val commonMain by getting {
+        commonMain {
             dependencies {
                 api(libs.okio.core)
                 api(libs.coroutines.core)
             }
         }
 
-        val commonTest by getting {
+        commonTest {
             dependencies {
                 implementation(libs.coroutines.test)
                 implementation(kotlin("test-common"))
@@ -55,23 +61,18 @@ kotlin {
         }
 
         val posixMain by creating {
-            dependsOn(commonMain)
+            dependsOn(commonMain.get())
         }
 
-        val linuxMain by getting {
+        linuxMain {
             dependsOn(posixMain)
-        }
-        val macosMain by creating {
-            dependsOn(posixMain)
-        }
-        val macosX64Main by getting {
-            dependsOn(macosMain)
-        }
-        val macosArm64Main by getting {
-            dependsOn(macosMain)
         }
 
-        val jvmTest by getting {
+        macosMain {
+            dependsOn(posixMain)
+        }
+
+        jvmTest {
             dependencies {
                 implementation(kotlin("test"))
                 implementation(kotlin("test-junit"))

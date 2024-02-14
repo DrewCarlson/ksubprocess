@@ -1,7 +1,14 @@
 # ksubprocess
 
-[![Maven Central](https://img.shields.io/maven-central/v/org.drewcarlson/ksubprocess-jvm?label=maven&color=blue)](https://search.maven.org/search?q=g:org.drewcarlson%20a:ksubprocess*)
+[![Maven Central](https://img.shields.io/maven-central/v/org.drewcarlson/ksubprocess?label=maven&color=blue)](https://central.sonatype.com/search?q=ksubprocess-*&namespace=org.drewcarlson)
+![Sonatype Nexus (Snapshots)](https://img.shields.io/nexus/s/org.drewcarlson/ksubprocess?server=https%3A%2F%2Fs01.oss.sonatype.org)
 ![](https://github.com/DrewCarlson/ksubprocess/workflows/Tests/badge.svg)
+
+![](https://img.shields.io/static/v1?label=&message=Platforms&color=grey)
+![](https://img.shields.io/static/v1?label=&message=Jvm&color=blue)
+![](https://img.shields.io/static/v1?label=&message=Linux&color=blue)
+![](https://img.shields.io/static/v1?label=&message=macOS&color=blue)
+![](https://img.shields.io/static/v1?label=&message=Windows&color=blue)
 
 Kotlin multiplatform library for launching child processes, monitoring their state, and capturing output.
 

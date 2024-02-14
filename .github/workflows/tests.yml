@@ -44,7 +44,7 @@ jobs:
         name: Test Linux Target
         if: ${{ startsWith(matrix.os, 'ubuntu') }}
         with:
-          arguments: linuxTest
+          arguments: linuxX64Test
 
       - uses: gradle/gradle-build-action@v2
         name: Test JVM Target
