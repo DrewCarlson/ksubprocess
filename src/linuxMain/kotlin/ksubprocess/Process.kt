@@ -28,6 +28,8 @@ import okio.buffer
 import platform.posix.*
 import kotlin.time.*
 
+internal expect val siginfo_t.exitCode: Int
+
 // safely close an fd
 private fun Int.closeFd() {
     if (this != -1) {
@@ -235,7 +237,7 @@ public actual class Process actual constructor(
                 CLD_EXITED, CLD_KILLED, CLD_DUMPED -> {
                     // process has terminated
                     terminated = true
-                    _exitStatus = info._sifields._sigchld.si_status
+                    _exitStatus = info.exitCode
                     cleanup()
                 }
             }
