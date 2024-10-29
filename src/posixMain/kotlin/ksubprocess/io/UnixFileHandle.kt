@@ -42,13 +42,17 @@ internal class UnixFileHandle(
         byteCount: Int
     ): Int {
         val canSeek = lseek(fileno(file), fileOffset, SEEK_SET) > -1
-        val bytesRead = array.usePinned { pinned ->
-            if (canSeek) {
-                pread(fileno(file), pinned.addressOf(arrayOffset), byteCount.convert(), fileOffset)
-            } else {
-                read(fileno(file), pinned.addressOf(arrayOffset), byteCount.convert())
-            }
-        }.convert<Int>()
+        val bytesRead = if (array.isNotEmpty()) {
+            array.usePinned { pinned ->
+                if (canSeek) {
+                    pread(fileno(file), pinned.addressOf(arrayOffset), byteCount.convert(), fileOffset)
+                } else {
+                    read(fileno(file), pinned.addressOf(arrayOffset), byteCount.convert())
+                }
+            }.convert<Int>()
+        } else {
+            0
+        }
         if (bytesRead == -1) throw PosixException.forErrno("pread")
         if (bytesRead == 0) return -1
         return bytesRead
@@ -61,13 +65,17 @@ internal class UnixFileHandle(
         byteCount: Int
     ) {
         val canSeek = lseek(fileno(file), fileOffset, SEEK_SET) > -1
-        val bytesWritten = array.usePinned { pinned ->
-            if (canSeek) {
-                pwrite(fileno(file), pinned.addressOf(arrayOffset), byteCount.convert(), fileOffset)
-            } else {
-                write(fileno(file), pinned.addressOf(arrayOffset), byteCount.convert())
-            }
-        }.convert<Int>()
+        val bytesWritten = if (array.isNotEmpty()) {
+            array.usePinned { pinned ->
+                if (canSeek) {
+                    pwrite(fileno(file), pinned.addressOf(arrayOffset), byteCount.convert(), fileOffset)
+                } else {
+                    write(fileno(file), pinned.addressOf(arrayOffset), byteCount.convert())
+                }
+            }.convert<Int>()
+        } else {
+            0
+        }
         if (bytesWritten != byteCount) throw PosixException.forErrno("pwrite")
     }
 

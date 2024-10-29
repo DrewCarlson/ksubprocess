@@ -18,6 +18,7 @@ internal class OkioNSFileHandle(
     }
 
     override fun protectedRead(fileOffset: Long, array: ByteArray, arrayOffset: Int, byteCount: Int): Int {
+        if (array.isEmpty()) return -1
         val data = file.readDataOfLength(byteCount.toULong())
         if (data.length() == 0uL) {
             return -1
@@ -36,6 +37,7 @@ internal class OkioNSFileHandle(
     }
 
     override fun protectedWrite(fileOffset: Long, array: ByteArray, arrayOffset: Int, byteCount: Int) {
+        if (array.isEmpty()) return
         val data = NSData.create(
             data = array.sliceArray(
                 arrayOffset until arrayOffset + byteCount

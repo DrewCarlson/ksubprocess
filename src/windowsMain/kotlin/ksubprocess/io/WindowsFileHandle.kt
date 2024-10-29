@@ -35,16 +35,24 @@ internal class WindowsFileHandle(
     }
 
     override fun protectedRead(fileOffset: Long, array: ByteArray, arrayOffset: Int, byteCount: Int): Int {
-        val bytesRead = array.usePinned { pinned ->
-            read(pinned.addressOf(arrayOffset), fileOffset, byteCount).toInt()
+        val bytesRead = if (array.isNotEmpty()) {
+            array.usePinned { pinned ->
+                read(pinned.addressOf(arrayOffset), fileOffset, byteCount).toInt()
+            }
+        } else {
+            0
         }
         if (bytesRead == 0) return -1
         return bytesRead
     }
 
     override fun protectedWrite(fileOffset: Long, array: ByteArray, arrayOffset: Int, byteCount: Int) {
-        val bytesWritten = array.usePinned { pinned ->
-            write(pinned.addressOf(arrayOffset), fileOffset, byteCount).toInt()
+        val bytesWritten = if (array.isNotEmpty()) {
+            array.usePinned { pinned ->
+                write(pinned.addressOf(arrayOffset), fileOffset, byteCount).toInt()
+            }
+        } else {
+            0
         }
         if (bytesWritten != byteCount) throw IOException("bytesWritten=$bytesWritten")
     }
