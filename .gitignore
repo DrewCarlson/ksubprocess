@@ -8,3 +8,4 @@ gradle-app.setting
 *.iml
 out/
 *.hprof
+.kotlin/
