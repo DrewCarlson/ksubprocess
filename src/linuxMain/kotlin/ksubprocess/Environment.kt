@@ -28,12 +28,12 @@ private data class EnvEntry(override val key: String, override val value: String
 public actual object Environment : AbstractMap<String, String>(), Map<String, String> {
 
     // fastpath get and contains through getenv
-    override fun containsKey(key: String): Boolean = getenv(key) != null
+    actual override fun containsKey(key: String): Boolean = getenv(key) != null
 
-    override fun get(key: String): String? = getenv(key)?.toKString()
+    actual override fun get(key: String): String? = getenv(key)?.toKString()
 
     // also fastpath entries.contains
-    override val entries: Set<Map.Entry<String, String>> = object : AbstractSet<Map.Entry<String, String>>() {
+    actual override val entries: Set<Map.Entry<String, String>> = object : AbstractSet<Map.Entry<String, String>>() {
         override fun contains(element: Map.Entry<String, String>): Boolean = get(element.key) == element.value
 
         // only perform full scan if really needed

@@ -22,6 +22,22 @@ public expect object Environment : Map<String, String> {
 
     /** true if the environment keys are case-insensitive */
     public val caseInsensitive: Boolean
+
+    override fun containsKey(key: String): Boolean
+
+    override fun containsValue(value: String): Boolean
+
+    override val entries: Set<Map.Entry<String, String>>
+
+    override val keys: Set<String>
+
+    override val size: Int
+
+    override val values: Collection<String>
+
+    override fun isEmpty(): Boolean
+
+    override fun get(key: String): String?
 }
 
 /**

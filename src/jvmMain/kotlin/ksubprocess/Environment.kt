@@ -18,10 +18,10 @@ package ksubprocess
 // this is just a thin wrapper around System.getenv()
 public actual object Environment : AbstractMap<String, String>(), Map<String, String> {
 
-    override fun get(key: String): String? = System.getenv(key)
-    override fun containsKey(key: String): Boolean = System.getenv(key) != null
+    actual override fun get(key: String): String? = System.getenv(key)
+    actual override fun containsKey(key: String): Boolean = System.getenv(key) != null
 
-    override val entries: Set<Map.Entry<String, String>>
+    actual override val entries: Set<Map.Entry<String, String>>
         get() = System.getenv().entries
 
     public actual val caseInsensitive: Boolean by lazy {
