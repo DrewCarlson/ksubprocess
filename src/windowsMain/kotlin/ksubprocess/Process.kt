@@ -287,12 +287,6 @@ public actual class Process actual constructor(public actual val args: ProcessAr
         stdinFd.close(ignoreErrors = true)
         stdoutFd.close(ignoreErrors = true)
         stderrFd.close(ignoreErrors = true)
-        runCatching { stdin?.close() }
-        runCatching { stderr?.close() }
-        runCatching { stdout?.close() }
-        runCatching { stdinHandle?.close() }
-        runCatching { stdoutHandle?.close() }
-        runCatching { stderrHandle?.close() }
     }
 
     private var _exitCode: Int? = null
