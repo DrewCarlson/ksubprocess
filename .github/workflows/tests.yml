@@ -18,6 +18,9 @@ jobs:
         with:
           distribution: 'zulu'
           java-version: 11
+
+      - uses: gradle/actions/setup-gradle@v4
+
       - name: Cache Build files
         uses: actions/cache@v4
         with:
@@ -28,28 +31,20 @@ jobs:
             %USERPROFILE%\.gradle
           key: ${{ runner.os }}-${{ hashFiles('gradle.properties') }}
 
-      - uses: gradle/gradle-build-action@v3
-        name: Test Windows Target
+      - name: Test Windows Target
         if: ${{ startsWith(matrix.os, 'windows') }}
-        with:
-          arguments: windowsTest
+        run: ./gradlew windowsTest
 
-      - uses: gradle/gradle-build-action@v3
-        name: Test Apple Targets
+      - name: Test Apple Targets
         if: ${{ startsWith(matrix.os, 'macos') }}
-        with:
-          arguments: macosX64Test
+        run: ./gradlew macosX64Test
 
-      - uses: gradle/gradle-build-action@v3
-        name: Test Linux Target
+      - name: Test Linux Target
         if: ${{ startsWith(matrix.os, 'ubuntu') }}
-        with:
-          arguments: linuxX64Test
+        run: ./gradlew linuxX64Test
 
-      - uses: gradle/gradle-build-action@v3
-        name: Test JVM Target
-        with:
-          arguments: jvmTest
+      - name: Test JVM Target
+        run: ./gradlew jvmTest
 
       - name: Publish Test Reports
         uses: mikepenz/action-junit-report@v4
