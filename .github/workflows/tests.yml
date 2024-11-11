@@ -47,7 +47,7 @@ jobs:
         run: ./gradlew jvmTest
 
       - name: Publish Test Reports
-        uses: mikepenz/action-junit-report@v4
+        uses: mikepenz/action-junit-report@v5
         if: always()
         with:
           report_paths: 'build/test-results/**/TEST-*.xml'
