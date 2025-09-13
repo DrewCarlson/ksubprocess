@@ -59,6 +59,7 @@ private fun Redirect.openFds(stream: String): RedirectFds = when (this) {
         }
         RedirectFds(fd, stream == "stdin")
     }
+
     Redirect.Inherit -> RedirectFds.EMPTY
     Redirect.Pipe -> memScoped {
         // open a pipe
@@ -87,6 +88,7 @@ private fun Redirect.openFds(stream: String): RedirectFds = when (this) {
 
         RedirectFds(hReadPipe.value, hWritePipe.value)
     }
+
     is Redirect.Read -> memScoped {
         val saAttr = alloc<SECURITY_ATTRIBUTES>()
         saAttr.nLength = sizeOf<SECURITY_ATTRIBUTES>().convert()
@@ -110,6 +112,7 @@ private fun Redirect.openFds(stream: String): RedirectFds = when (this) {
         }
         RedirectFds(fd, INVALID_HANDLE_VALUE)
     }
+
     is Redirect.Write -> memScoped {
         val saAttr = alloc<SECURITY_ATTRIBUTES>()
         saAttr.nLength = sizeOf<SECURITY_ATTRIBUTES>().convert()
@@ -135,6 +138,7 @@ private fun Redirect.openFds(stream: String): RedirectFds = when (this) {
         }
         RedirectFds(INVALID_HANDLE_VALUE, fd)
     }
+
     Redirect.Stdout -> error("Redirect.Stdout must be handled separately.")
 }
 
@@ -205,16 +209,16 @@ public actual class Process actual constructor(public actual val args: ProcessAr
 
                 // start the process
                 val createSuccess = CreateProcessW(
-                    null, // lpApplicationName
-                    cmdLine.wcstr.ptr, // command line
-                    null, // process security attributes
-                    null, // primary thread security attributes
-                    TRUE, // handles are inherited
-                    CREATE_UNICODE_ENVIRONMENT.convert(), // creation flags
-                    envBlock, // use environment
-                    args.workingDirectory, // use current directory if any (null auto propagation)
-                    startInfo.ptr, // STARTUPINFO pointer
-                    procInfo.ptr // receives PROCESS_INFORMATION
+                    lpApplicationName = null, // lpApplicationName
+                    lpCommandLine = cmdLine.wcstr.ptr, // command line
+                    lpProcessAttributes = null, // process security attributes
+                    lpThreadAttributes = null, // primary thread security attributes
+                    bInheritHandles = TRUE, // handles are inherited
+                    dwCreationFlags = CREATE_UNICODE_ENVIRONMENT.convert(), // creation flags
+                    lpEnvironment = envBlock, // use environment
+                    lpCurrentDirectory = args.workingDirectory, // use current directory if any (null auto propagation)
+                    lpStartupInfo = startInfo.ptr, // STARTUPINFO pointer
+                    lpProcessInformation = procInfo.ptr, // receives PROCESS_INFORMATION
                 )
                 if (createSuccess == 0) {
                     throw ProcessException(
@@ -319,6 +323,7 @@ public actual class Process actual constructor(public actual val args: ProcessAr
                 "Error waiting for subprocess",
                 WindowsException.fromLastError(functionName = "TerminateProcess")
             )
+
             else -> checkNotNull(exitCode) { "Waited for process, but it's still alive!" }
         }
     }
@@ -329,6 +334,7 @@ public actual class Process actual constructor(public actual val args: ProcessAr
                 "Error waiting for child process",
                 WindowsException.fromLastError(functionName = "TerminateProcess")
             )
+
             WAIT_TIMEOUT.convert<DWORD>() -> null // still alive
             else -> exitCode // terminated
         }

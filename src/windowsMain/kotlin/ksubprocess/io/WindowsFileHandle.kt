@@ -16,6 +16,7 @@
 package ksubprocess.io
 
 import kotlinx.cinterop.*
+import ksubprocess.close
 import okio.FileHandle
 import okio.IOException
 import platform.windows.*
@@ -83,9 +84,7 @@ internal class WindowsFileHandle(
     }
 
     override fun protectedClose() {
-        if (CloseHandle(file) == 0) {
-            throw WindowsException.fromLastError(functionName = "CloseHandle")
-        }
+        file.close()
     }
 
     private fun LARGE_INTEGER.toLong(): Long {
