@@ -274,10 +274,11 @@ class ProcessTests {
     @Test
     @JsName("testFdsRemainAccessible")
     fun `Process exit leaves file descriptors open until consumed`() = runTest {
+        val lineCount = 5
         val proc = Process {
             testProgram("OutputProducerKt")
             stdout = Redirect.Pipe
-            arg("5")
+            arg("$lineCount")
         }
 
         val stdoutSource = proc.stdout!!
@@ -294,7 +295,7 @@ class ProcessTests {
         job.join()
 
         assertEquals(
-            List(100) { "Output line $it: This is a test line with some content" },
+            List(lineCount) { "Output line $it: This is a test line with some content" },
             output,
         )
     }
