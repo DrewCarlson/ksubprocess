@@ -21,7 +21,8 @@ public final class HelloWorldKt {
 }
 
 public final class OutputProducerKt {
-	public static final fun main ([Ljava/lang/String;)V
+	public static synthetic fun main ([Ljava/lang/String;)V
+	public static final fun main ([Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 }
 
 public final class PwdKt {
