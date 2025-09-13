@@ -84,7 +84,7 @@ public actual class Process actual constructor(public actual val args: ProcessAr
     public actual val exitCode: Int?
         get() = try {
             impl.exitValue()
-        } catch (e: IllegalThreadStateException) {
+        } catch (_: IllegalThreadStateException) {
             null
         }
 

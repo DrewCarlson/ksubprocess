@@ -15,6 +15,8 @@
  */
 package ksubprocess
 
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import okio.Path
 import okio.Path.Companion.toPath
@@ -267,5 +269,33 @@ class ProcessTests {
 
             assertEquals(code, codeAct, "Process exited with desired code.")
         }
+    }
+
+    @Test
+    @JsName("testFdsRemainAccessible")
+    fun `Process exit leaves file descriptors open until consumed`() = runTest {
+        val proc = Process {
+            testProgram("OutputProducerKt")
+            stdout = Redirect.Pipe
+            arg("100")
+        }
+
+        val stdoutSource = proc.stdout!!
+        val output = mutableListOf<String>()
+        val job = launch {
+            while (!stdoutSource.exhausted()) {
+                stdoutSource.readUtf8Line()?.let(output::add)
+                delay(1000)
+            }
+        }
+
+        proc.waitFor()
+
+        job.join()
+
+        assertEquals(
+            List(100) { "Output line $it: This is a test line with some content" },
+            output,
+        )
     }
 }

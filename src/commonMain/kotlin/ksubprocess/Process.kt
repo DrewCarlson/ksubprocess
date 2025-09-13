@@ -88,7 +88,7 @@ constructor(args: ProcessArguments) {
     public fun kill()
 
     /**
-     * Close stdin handles and free resources so allow process to complete.
+     * Close stdin handles and free resources to allow process to complete.
      */
     public fun closeStdin()
 }

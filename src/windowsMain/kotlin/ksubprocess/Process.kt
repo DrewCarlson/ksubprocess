@@ -284,9 +284,9 @@ public actual class Process actual constructor(public actual val args: ProcessAr
     // close handles when done!
     private fun cleanup() {
         childProcessHandle.close(ignoreErrors = true)
-        stdinFd.close(ignoreErrors = true)
-        stdoutFd.close(ignoreErrors = true)
-        stderrFd.close(ignoreErrors = true)
+        stdinHandle?.close()
+        stdoutHandle?.close()
+        stderrHandle?.close()
     }
 
     private var _exitCode: Int? = null

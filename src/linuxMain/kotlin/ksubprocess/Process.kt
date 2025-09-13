@@ -211,10 +211,9 @@ public actual class Process actual constructor(
     }
 
     private fun cleanup() {
-        // close fds as needed. Errors are ignored.
-        stdoutFd.closeFd()
-        stderrFd.closeFd()
-        stdinFd.closeFd()
+        stdoutHandle?.close()
+        stderrHandle?.close()
+        stdinHandle?.close()
     }
 
     private fun checkState(block: Boolean = false) {
