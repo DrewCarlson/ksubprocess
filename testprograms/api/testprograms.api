@@ -20,6 +20,10 @@ public final class HelloWorldKt {
 	public static synthetic fun main ([Ljava/lang/String;)V
 }
 
+public final class OutputProducerKt {
+	public static final fun main ([Ljava/lang/String;)V
+}
+
 public final class PwdKt {
 	public static final fun main ()V
 	public static synthetic fun main ([Ljava/lang/String;)V
