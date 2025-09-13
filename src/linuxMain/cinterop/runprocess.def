@@ -80,7 +80,7 @@ static pid_t fork_and_run(
         if (op_stderr != -1) {
             close(op_stderr);
         }
-        if (op_stdout != -1) {
+        if (op_stdin != -1) {
             close(op_stdin);
         }
 
