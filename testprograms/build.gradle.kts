@@ -9,5 +9,6 @@ repositories {
 }
 
 dependencies {
+    implementation(libs.coroutines.core)
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
 }

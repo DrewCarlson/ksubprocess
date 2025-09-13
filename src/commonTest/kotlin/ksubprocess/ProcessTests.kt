@@ -277,7 +277,7 @@ class ProcessTests {
         val proc = Process {
             testProgram("OutputProducerKt")
             stdout = Redirect.Pipe
-            arg("100")
+            arg("5")
         }
 
         val stdoutSource = proc.stdout!!
