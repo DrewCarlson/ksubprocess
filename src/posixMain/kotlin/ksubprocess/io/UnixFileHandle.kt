@@ -16,14 +16,13 @@
 package ksubprocess.io
 
 import kotlinx.cinterop.*
-import okio.FileHandle
 import platform.posix.*
 
 
 internal class UnixFileHandle(
     readWrite: Boolean,
     private val file: CPointer<FILE>
-) : FileHandle(readWrite) {
+) : KFileHandle(readWrite) {
 
     override fun protectedSize(): Long {
         memScoped {

@@ -1,14 +1,14 @@
 package ksubprocess
 
 import kotlinx.cinterop.*
-import okio.FileHandle
+import ksubprocess.io.KFileHandle
 import platform.Foundation.*
 import platform.posix.memcpy
 
 internal class OkioNSFileHandle(
     readWrite: Boolean,
     private val file: NSFileHandle
-) : FileHandle(readWrite) {
+) : KFileHandle(readWrite) {
     override fun protectedClose() {
         file.closeAndReturnError(null)
     }

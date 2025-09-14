@@ -11,6 +11,7 @@
 ![](https://img.shields.io/static/v1?label=&message=Windows&color=blue)
 
 Kotlin multiplatform library for launching child processes, monitoring their state, and capturing output.
+Built with [kotlinx.coroutines](https://github.com/Kotlin/kotlinx.coroutines) and [kotlinx.io](https://github.com/Kotlin/kotlinx-io/).
 
 ```kotlin
 val result = exec {

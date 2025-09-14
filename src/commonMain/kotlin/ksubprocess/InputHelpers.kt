@@ -4,15 +4,16 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.onCompletion
-import okio.BufferedSource
+import kotlinx.io.Source
+import kotlinx.io.readLine
 
-internal fun BufferedSource?.lines(): Flow<String> {
+internal fun Source?.lines(): Flow<String> {
     return if (this == null) {
         emptyFlow()
     } else {
         flow {
             while (!exhausted()) {
-                emit(readUtf8Line() ?: return@flow)
+                emit(readLine() ?: return@flow)
             }
         }.onCompletion { close() }
     }

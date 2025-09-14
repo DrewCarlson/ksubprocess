@@ -16,6 +16,8 @@
 package ksubprocess
 
 import kotlinx.coroutines.*
+import kotlinx.io.readString
+import kotlinx.io.writeString
 import kotlin.time.*
 
 /**
@@ -69,14 +71,14 @@ public suspend fun Process.communicate(
 ): CommunicateResult = coroutineScope {
     // start output pipe collectors
     val stdoutCollector =
-        if (args.stdout == Redirect.Pipe) async { requireNotNull(stdout).readUtf8() }
+        if (args.stdout == Redirect.Pipe) async { requireNotNull(stdout).readString() }
         else null
     val stderrCollector =
-        if (args.stderr == Redirect.Pipe) async { requireNotNull(stderr).readUtf8() }
+        if (args.stderr == Redirect.Pipe) async { requireNotNull(stderr).readString() }
         else null
 
     // push out the input data
-    stdin?.writeUtf8(input)
+    stdin?.writeString(input)
     closeStdin()
 
     // wait with timeout if needed

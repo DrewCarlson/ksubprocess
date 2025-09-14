@@ -17,7 +17,11 @@ package ksubprocess
 
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.Flow
-import okio.*
+import kotlinx.io.Sink
+import kotlinx.io.Source
+import kotlinx.io.asSink
+import kotlinx.io.asSource
+import kotlinx.io.buffered
 import java.io.File
 import java.io.IOException
 import kotlin.time.Duration
@@ -110,18 +114,18 @@ public actual class Process actual constructor(public actual val args: ProcessAr
         impl.destroyForcibly()
     }
 
-    public actual val stdin: BufferedSink? by lazy {
-        if (args.stdin == Redirect.Pipe) impl.outputStream.sink().buffer()
+    public actual val stdin: Sink? by lazy {
+        if (args.stdin == Redirect.Pipe) impl.outputStream.asSink().buffered()
         else null
     }
 
-    public actual val stdout: BufferedSource? by lazy {
-        if (args.stdout == Redirect.Pipe) impl.inputStream.source().buffer()
+    public actual val stdout: Source? by lazy {
+        if (args.stdout == Redirect.Pipe) impl.inputStream.asSource().buffered()
         else null
     }
 
-    public actual val stderr: BufferedSource? by lazy {
-        if (args.stderr == Redirect.Pipe) impl.errorStream.source().buffer()
+    public actual val stderr: Source? by lazy {
+        if (args.stderr == Redirect.Pipe) impl.errorStream.asSource().buffered()
         else null
     }
 

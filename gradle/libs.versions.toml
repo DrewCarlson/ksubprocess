@@ -1,10 +1,9 @@
 [versions]
 kotlin = { strictly = "2.2.20" }
 dokka = "2.0.0"
-ktor = "3.3.0"
 shadow = "9.1.0"
-okio = "3.16.0"
 coroutines = "1.10.2"
+kotlinio = "0.8.0"
 
 spotless = "6.25.0"
 ktlint = "0.50.0"
@@ -15,11 +14,11 @@ dokka = { id = "org.jetbrains.dokka", version.ref = "dokka" }
 spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
 shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }
 mavenPublish = { id = "com.vanniktech.maven.publish", version = "0.34.0" }
+atomicfu = { id = "org.jetbrains.kotlinx.atomicfu", version = "0.29.0" }
 completeKotlin = { id = "com.louiscad.complete-kotlin", version = "1.1.0" }
 
 [libraries]
-ktor-io = { module = "io.ktor:ktor-io", version.ref = "ktor" }
-okio-core = { module = "com.squareup.okio:okio", version.ref = "okio"}
+kotlinx-io-core = { module = "org.jetbrains.kotlinx:kotlinx-io-core", version.ref = "kotlinio" }
 
 coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 coroutines-jdk8 = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-jdk8", version.ref = "coroutines" }

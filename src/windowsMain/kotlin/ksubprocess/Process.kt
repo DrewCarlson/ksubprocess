@@ -17,9 +17,11 @@ package ksubprocess
 
 import kotlinx.cinterop.*
 import kotlinx.coroutines.flow.Flow
+import kotlinx.io.Sink
+import kotlinx.io.Source
+import ksubprocess.io.KFileHandle
 import ksubprocess.io.WindowsException
 import ksubprocess.io.WindowsFileHandle
-import okio.*
 import platform.windows.*
 import kotlin.time.*
 
@@ -259,25 +261,19 @@ public actual class Process actual constructor(public actual val args: ProcessAr
         }
     }
 
-    private val stdinHandle: FileHandle? by lazy {
+    private val stdinHandle: KFileHandle? by lazy {
         if (stdinFd == null) null else WindowsFileHandle(true, stdinFd)
     }
-    private val stdoutHandle: FileHandle? by lazy {
+    private val stdoutHandle: KFileHandle? by lazy {
         if (stdoutFd == null) null else WindowsFileHandle(false, stdoutFd)
     }
-    private val stderrHandle: FileHandle? by lazy {
+    private val stderrHandle: KFileHandle? by lazy {
         if (stderrFd == null) null else WindowsFileHandle(false, stderrFd)
     }
 
-    public actual val stdin: BufferedSink? by lazy {
-        stdinHandle?.sink()?.buffer()
-    }
-    public actual val stdout: BufferedSource? by lazy {
-        stdoutHandle?.source()?.buffer()
-    }
-    public actual val stderr: BufferedSource? by lazy {
-        stderrHandle?.source()?.buffer()
-    }
+    public actual val stdin: Sink? by lazy { stdinHandle?.sink() }
+    public actual val stdout: Source? by lazy { stdoutHandle?.source() }
+    public actual val stderr: Source? by lazy { stderrHandle?.source() }
 
     public actual val stdoutLines: Flow<String>
         get() = stdout.lines()

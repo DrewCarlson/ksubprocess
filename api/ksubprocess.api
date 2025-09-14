@@ -81,10 +81,10 @@ public final class ksubprocess/Process {
 	public final fun closeStdin ()V
 	public final fun getArgs ()Lksubprocess/ProcessArguments;
 	public final fun getExitCode ()Ljava/lang/Integer;
-	public final fun getStderr ()Lokio/BufferedSource;
+	public final fun getStderr ()Lkotlinx/io/Source;
 	public final fun getStderrLines ()Lkotlinx/coroutines/flow/Flow;
-	public final fun getStdin ()Lokio/BufferedSink;
-	public final fun getStdout ()Lokio/BufferedSource;
+	public final fun getStdin ()Lkotlinx/io/Sink;
+	public final fun getStdout ()Lkotlinx/io/Source;
 	public final fun getStdoutLines ()Lkotlinx/coroutines/flow/Flow;
 	public final fun isAlive ()Z
 	public final fun kill ()V

@@ -15,15 +15,16 @@
  */
 package ksubprocess
 
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
-import okio.FileSystem
-import okio.Path
-import okio.Path.Companion.toPath
-import okio.SYSTEM
-import okio.buffer
-import okio.use
+import kotlinx.io.buffered
+import kotlinx.io.files.Path
+import kotlinx.io.files.SystemFileSystem
+import kotlinx.io.readLine
+import kotlinx.io.readString
+import kotlinx.io.writeString
 import kotlin.js.JsName
 import kotlin.test.*
 import kotlin.time.Duration.Companion.seconds
@@ -41,7 +42,7 @@ class ProcessTests {
             stdout = Redirect.Pipe
         }
         // read stdout
-        val outText = proc.stdout!!.readUtf8()
+        val outText = proc.stdout!!.readString()
 
         // wait for termination
         proc.waitFor()
@@ -66,11 +67,11 @@ class ProcessTests {
         """.trimIndent()
 
         // write stdin
-        proc.stdin!!.writeUtf8(text)
+        proc.stdin!!.writeString(text)
         proc.closeStdin()
 
         // read stdout
-        val outText = proc.stdout!!.readUtf8()
+        val outText = proc.stdout!!.readString()
 
         // wait for termination
         proc.waitFor()
@@ -98,7 +99,7 @@ class ProcessTests {
         """.trimIndent()
 
         // read stdout
-        val outText = proc.stdout!!.readUtf8()
+        val outText = proc.stdout!!.readString()
 
         // wait for termination
         proc.waitFor()
@@ -113,7 +114,7 @@ class ProcessTests {
     @Test
     @JsName("testStdoutFile")
     fun `Write stdout to file`() = runTest {
-        val outPath = "build${Path.DIRECTORY_SEPARATOR}test.output.txt".toPath()
+        val outPath = Path("build", "test.output.txt")
         val proc = Process {
             testProgram("HelloWorldKt")
             stdout = Redirect.Write(outPath.toString())
@@ -122,8 +123,8 @@ class ProcessTests {
         // wait for termination
         proc.waitFor()
 
-        val fileContent = FileSystem.SYSTEM.source(outPath).buffer().use { it.readUtf8() }
-        FileSystem.SYSTEM.delete(outPath)
+        val fileContent = SystemFileSystem.source(outPath).buffered().use { it.readString() }
+        SystemFileSystem.delete(outPath)
 
         assertEquals("Hello World!", fileContent.trimEnd())
 
@@ -154,7 +155,7 @@ class ProcessTests {
         }
 
         // read stdout
-        val outText = proc.stdout!!.readUtf8()
+        val outText = proc.stdout!!.readString()
 
         // wait for termination
         proc.waitFor()
@@ -192,7 +193,7 @@ class ProcessTests {
         }
 
         // read stdout
-        val outText = proc.stdout!!.readUtf8()
+        val outText = proc.stdout!!.readString()
 
         // wait for termination
         proc.waitFor()
@@ -222,7 +223,7 @@ class ProcessTests {
         }
 
         // read stdout
-        val outText = proc.stdout!!.readUtf8()
+        val outText = proc.stdout!!.readString()
 
         // wait for termination
         proc.waitFor()
@@ -283,16 +284,19 @@ class ProcessTests {
             arg("$lineCount")
         }
 
+        println("process exitCode = ${proc.exitCode}")
+        println("process isAlive = ${proc.isAlive}")
         val stdoutSource = proc.stdout!!
         val output = mutableListOf<String>()
-        val job = launch {
+        val job = launch(start = CoroutineStart.UNDISPATCHED) {
             while (!stdoutSource.exhausted()) {
-                stdoutSource.readUtf8Line()?.let(output::add)
+                stdoutSource.readLine()?.let(output::add)
+                println(output.last())
                 delay(1000)
             }
         }
 
-        proc.waitFor()
+        println("process waitFor = ${proc.waitFor()}")
 
         job.join()
 

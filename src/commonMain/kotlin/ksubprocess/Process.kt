@@ -16,7 +16,8 @@
 package ksubprocess
 
 import kotlinx.coroutines.flow.Flow
-import okio.*
+import kotlinx.io.Sink
+import kotlinx.io.Source
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -59,13 +60,13 @@ constructor(args: ProcessArguments) {
     public suspend fun waitFor(timeout: Duration): Int?
 
     /** stdin pipe if requested. */
-    public val stdin: BufferedSink?
+    public val stdin: Sink?
 
     /** stdout pipe if requested. */
-    public val stdout: BufferedSource?
+    public val stdout: Source?
 
     /** stderr pipe if requested. */
-    public val stderr: BufferedSource?
+    public val stderr: Source?
 
     /** stdout lines if requested. */
     public val stdoutLines: Flow<String>
