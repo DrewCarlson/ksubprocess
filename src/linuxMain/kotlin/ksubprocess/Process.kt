@@ -47,7 +47,8 @@ private data class RedirectFds(val readFd: Int, val writeFd: Int) {
 
 private fun Redirect.openFds(stream: String): RedirectFds = when (this) {
     Redirect.Null -> {
-        val fd = open("/dev/null", O_RDWR)
+        val flags = if (stream == "stdin") O_RDONLY else O_WRONLY
+        val fd = open("/dev/null", flags)
         if (fd == -1) {
             throw ProcessConfigException(
                 "Error opening null file for $stream",
@@ -87,7 +88,7 @@ private fun Redirect.openFds(stream: String): RedirectFds = when (this) {
         val fd = open(
             file,
             if (append) O_WRONLY or O_APPEND or O_CREAT
-            else O_WRONLY or O_CREAT,
+            else O_WRONLY or O_CREAT or O_TRUNC,
             0x0777
         )
         if (fd == -1) {
