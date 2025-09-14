@@ -1,10 +1,8 @@
-@Suppress("DSL_SCOPE_VIOLATION")
 plugins {
     alias(libs.plugins.multiplatform)
     alias(libs.plugins.dokka)
-    alias(libs.plugins.binaryCompat)
     alias(libs.plugins.spotless)
-    alias(libs.plugins.completeKotlin)
+    //alias(libs.plugins.completeKotlin)
     alias(libs.plugins.mavenPublish)
 }
 
@@ -15,6 +13,7 @@ repositories {
 version = System.getenv("GITHUB_REF")?.substringAfter("refs/tags/v", version.toString()) ?: version
 
 kotlin {
+    jvmToolchain(11)
     jvm()
     macosX64()
     macosArm64()
