@@ -53,7 +53,7 @@ static void run_in_fork(
         execres = execv(executable, args);
     }
     if (execres != 0) {
-        perror("Process executation failed");
+        perror("Process execution failed");
         _exit(1);
     }
 }
