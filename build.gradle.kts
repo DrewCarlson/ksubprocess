@@ -13,6 +13,10 @@ repositories {
 version = System.getenv("GITHUB_REF")?.substringAfter("refs/tags/v", version.toString()) ?: version
 
 kotlin {
+    @OptIn(org.jetbrains.kotlin.gradle.dsl.abi.ExperimentalAbiValidation::class)
+    abiValidation {
+        enabled.set(true)
+    }
     jvmToolchain(11)
     jvm()
     macosX64()

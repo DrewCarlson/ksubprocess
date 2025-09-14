@@ -1,0 +1,318 @@
+// Klib ABI Dump
+// Targets: [linuxArm64, linuxX64, macosArm64, macosX64, mingwX64.windows]
+// Alias: apple => [macosArm64, macosX64]
+// Alias: linux => [linuxArm64, linuxX64]
+// Rendering settings:
+// - Signature version: 2
+// - Show manifest properties: true
+// - Show declarations: true
+
+// Library unique name: <org.drewcarlson:ksubprocess>
+final class ksubprocess/CommunicateResult { // ksubprocess/CommunicateResult|null[0]
+    constructor <init>(kotlin/Int, kotlin/String, kotlin/String) // ksubprocess/CommunicateResult.<init>|<init>(kotlin.Int;kotlin.String;kotlin.String){}[0]
+
+    final val errors // ksubprocess/CommunicateResult.errors|{}errors[0]
+        final fun <get-errors>(): kotlin/String // ksubprocess/CommunicateResult.errors.<get-errors>|<get-errors>(){}[0]
+    final val exitCode // ksubprocess/CommunicateResult.exitCode|{}exitCode[0]
+        final fun <get-exitCode>(): kotlin/Int // ksubprocess/CommunicateResult.exitCode.<get-exitCode>|<get-exitCode>(){}[0]
+    final val output // ksubprocess/CommunicateResult.output|{}output[0]
+        final fun <get-output>(): kotlin/String // ksubprocess/CommunicateResult.output.<get-output>|<get-output>(){}[0]
+
+    final fun check() // ksubprocess/CommunicateResult.check|check(){}[0]
+    final fun component1(): kotlin/Int // ksubprocess/CommunicateResult.component1|component1(){}[0]
+    final fun component2(): kotlin/String // ksubprocess/CommunicateResult.component2|component2(){}[0]
+    final fun component3(): kotlin/String // ksubprocess/CommunicateResult.component3|component3(){}[0]
+    final fun copy(kotlin/Int = ..., kotlin/String = ..., kotlin/String = ...): ksubprocess/CommunicateResult // ksubprocess/CommunicateResult.copy|copy(kotlin.Int;kotlin.String;kotlin.String){}[0]
+    final fun equals(kotlin/Any?): kotlin/Boolean // ksubprocess/CommunicateResult.equals|equals(kotlin.Any?){}[0]
+    final fun hashCode(): kotlin/Int // ksubprocess/CommunicateResult.hashCode|hashCode(){}[0]
+    final fun toString(): kotlin/String // ksubprocess/CommunicateResult.toString|toString(){}[0]
+}
+
+final class ksubprocess/EnvironmentBuilder : kotlin.collections/AbstractMutableMap<kotlin/String, kotlin/String> { // ksubprocess/EnvironmentBuilder|null[0]
+    constructor <init>(kotlin.collections/Map<kotlin/String, kotlin/String> = ...) // ksubprocess/EnvironmentBuilder.<init>|<init>(kotlin.collections.Map<kotlin.String,kotlin.String>){}[0]
+
+    final val entries // ksubprocess/EnvironmentBuilder.entries|{}entries[0]
+        final fun <get-entries>(): kotlin.collections/MutableSet<kotlin.collections/MutableMap.MutableEntry<kotlin/String, kotlin/String>> // ksubprocess/EnvironmentBuilder.entries.<get-entries>|<get-entries>(){}[0]
+
+    final fun containsKey(kotlin/String): kotlin/Boolean // ksubprocess/EnvironmentBuilder.containsKey|containsKey(kotlin.String){}[0]
+    final fun containsValue(kotlin/String): kotlin/Boolean // ksubprocess/EnvironmentBuilder.containsValue|containsValue(kotlin.String){}[0]
+    final fun get(kotlin/String): kotlin/String? // ksubprocess/EnvironmentBuilder.get|get(kotlin.String){}[0]
+    final fun put(kotlin/String, kotlin/String): kotlin/String? // ksubprocess/EnvironmentBuilder.put|put(kotlin.String;kotlin.String){}[0]
+    final fun remove(kotlin/String): kotlin/String? // ksubprocess/EnvironmentBuilder.remove|remove(kotlin.String){}[0]
+}
+
+final class ksubprocess/ExecArgumentsBuilder : ksubprocess/ProcessArgumentBuilder { // ksubprocess/ExecArgumentsBuilder|null[0]
+    constructor <init>() // ksubprocess/ExecArgumentsBuilder.<init>|<init>(){}[0]
+
+    final var check // ksubprocess/ExecArgumentsBuilder.check|{}check[0]
+        final fun <get-check>(): kotlin/Boolean // ksubprocess/ExecArgumentsBuilder.check.<get-check>|<get-check>(){}[0]
+        final fun <set-check>(kotlin/Boolean) // ksubprocess/ExecArgumentsBuilder.check.<set-check>|<set-check>(kotlin.Boolean){}[0]
+    final var input // ksubprocess/ExecArgumentsBuilder.input|{}input[0]
+        final fun <get-input>(): kotlin/String // ksubprocess/ExecArgumentsBuilder.input.<get-input>|<get-input>(){}[0]
+        final fun <set-input>(kotlin/String) // ksubprocess/ExecArgumentsBuilder.input.<set-input>|<set-input>(kotlin.String){}[0]
+    final var killTimeout // ksubprocess/ExecArgumentsBuilder.killTimeout|{}killTimeout[0]
+        final fun <get-killTimeout>(): kotlin.time/Duration? // ksubprocess/ExecArgumentsBuilder.killTimeout.<get-killTimeout>|<get-killTimeout>(){}[0]
+        final fun <set-killTimeout>(kotlin.time/Duration?) // ksubprocess/ExecArgumentsBuilder.killTimeout.<set-killTimeout>|<set-killTimeout>(kotlin.time.Duration?){}[0]
+    final var timeout // ksubprocess/ExecArgumentsBuilder.timeout|{}timeout[0]
+        final fun <get-timeout>(): kotlin.time/Duration? // ksubprocess/ExecArgumentsBuilder.timeout.<get-timeout>|<get-timeout>(){}[0]
+        final fun <set-timeout>(kotlin.time/Duration?) // ksubprocess/ExecArgumentsBuilder.timeout.<set-timeout>|<set-timeout>(kotlin.time.Duration?){}[0]
+
+    final inline fun input(kotlin/Function1<kotlin.text/StringBuilder, kotlin/Unit>) // ksubprocess/ExecArgumentsBuilder.input|input(kotlin.Function1<kotlin.text.StringBuilder,kotlin.Unit>){}[0]
+}
+
+final class ksubprocess/Process { // ksubprocess/Process|null[0]
+    constructor <init>(ksubprocess/ProcessArguments) // ksubprocess/Process.<init>|<init>(ksubprocess.ProcessArguments){}[0]
+
+    final val args // ksubprocess/Process.args|{}args[0]
+        final fun <get-args>(): ksubprocess/ProcessArguments // ksubprocess/Process.args.<get-args>|<get-args>(){}[0]
+    final val exitCode // ksubprocess/Process.exitCode|{}exitCode[0]
+        final fun <get-exitCode>(): kotlin/Int? // ksubprocess/Process.exitCode.<get-exitCode>|<get-exitCode>(){}[0]
+    final val isAlive // ksubprocess/Process.isAlive|{}isAlive[0]
+        final fun <get-isAlive>(): kotlin/Boolean // ksubprocess/Process.isAlive.<get-isAlive>|<get-isAlive>(){}[0]
+    final val stderr // ksubprocess/Process.stderr|{}stderr[0]
+        final fun <get-stderr>(): okio/BufferedSource? // ksubprocess/Process.stderr.<get-stderr>|<get-stderr>(){}[0]
+    final val stderrLines // ksubprocess/Process.stderrLines|{}stderrLines[0]
+        final fun <get-stderrLines>(): kotlinx.coroutines.flow/Flow<kotlin/String> // ksubprocess/Process.stderrLines.<get-stderrLines>|<get-stderrLines>(){}[0]
+    final val stdin // ksubprocess/Process.stdin|{}stdin[0]
+        final fun <get-stdin>(): okio/BufferedSink? // ksubprocess/Process.stdin.<get-stdin>|<get-stdin>(){}[0]
+    final val stdout // ksubprocess/Process.stdout|{}stdout[0]
+        final fun <get-stdout>(): okio/BufferedSource? // ksubprocess/Process.stdout.<get-stdout>|<get-stdout>(){}[0]
+    final val stdoutLines // ksubprocess/Process.stdoutLines|{}stdoutLines[0]
+        final fun <get-stdoutLines>(): kotlinx.coroutines.flow/Flow<kotlin/String> // ksubprocess/Process.stdoutLines.<get-stdoutLines>|<get-stdoutLines>(){}[0]
+
+    final fun closeStdin() // ksubprocess/Process.closeStdin|closeStdin(){}[0]
+    final fun kill() // ksubprocess/Process.kill|kill(){}[0]
+    final fun terminate() // ksubprocess/Process.terminate|terminate(){}[0]
+    final suspend fun waitFor(): kotlin/Int // ksubprocess/Process.waitFor|waitFor(){}[0]
+    final suspend fun waitFor(kotlin.time/Duration): kotlin/Int? // ksubprocess/Process.waitFor|waitFor(kotlin.time.Duration){}[0]
+
+    // Targets: [linux]
+    final fun sendSignal(kotlin/Int) // ksubprocess/Process.sendSignal|sendSignal(kotlin.Int){}[0]
+}
+
+final class ksubprocess/ProcessArguments { // ksubprocess/ProcessArguments|null[0]
+    constructor <init>(kotlin.collections/Iterable<kotlin/String>, kotlin/String? = ..., kotlin.collections/Map<kotlin/String, kotlin/String>? = ..., ksubprocess/Redirect = ..., ksubprocess/Redirect = ..., ksubprocess/Redirect = ...) // ksubprocess/ProcessArguments.<init>|<init>(kotlin.collections.Iterable<kotlin.String>;kotlin.String?;kotlin.collections.Map<kotlin.String,kotlin.String>?;ksubprocess.Redirect;ksubprocess.Redirect;ksubprocess.Redirect){}[0]
+    constructor <init>(kotlin/Array<out kotlin/String>..., kotlin/String? = ..., kotlin.collections/Map<kotlin/String, kotlin/String>? = ..., ksubprocess/Redirect = ..., ksubprocess/Redirect = ..., ksubprocess/Redirect = ...) // ksubprocess/ProcessArguments.<init>|<init>(kotlin.Array<out|kotlin.String>...;kotlin.String?;kotlin.collections.Map<kotlin.String,kotlin.String>?;ksubprocess.Redirect;ksubprocess.Redirect;ksubprocess.Redirect){}[0]
+
+    final val arguments // ksubprocess/ProcessArguments.arguments|{}arguments[0]
+        final fun <get-arguments>(): kotlin.collections/List<kotlin/String> // ksubprocess/ProcessArguments.arguments.<get-arguments>|<get-arguments>(){}[0]
+    final val environment // ksubprocess/ProcessArguments.environment|{}environment[0]
+        final fun <get-environment>(): kotlin.collections/Map<kotlin/String, kotlin/String>? // ksubprocess/ProcessArguments.environment.<get-environment>|<get-environment>(){}[0]
+    final val stderr // ksubprocess/ProcessArguments.stderr|{}stderr[0]
+        final fun <get-stderr>(): ksubprocess/Redirect // ksubprocess/ProcessArguments.stderr.<get-stderr>|<get-stderr>(){}[0]
+    final val stdin // ksubprocess/ProcessArguments.stdin|{}stdin[0]
+        final fun <get-stdin>(): ksubprocess/Redirect // ksubprocess/ProcessArguments.stdin.<get-stdin>|<get-stdin>(){}[0]
+    final val stdout // ksubprocess/ProcessArguments.stdout|{}stdout[0]
+        final fun <get-stdout>(): ksubprocess/Redirect // ksubprocess/ProcessArguments.stdout.<get-stdout>|<get-stdout>(){}[0]
+    final val workingDirectory // ksubprocess/ProcessArguments.workingDirectory|{}workingDirectory[0]
+        final fun <get-workingDirectory>(): kotlin/String? // ksubprocess/ProcessArguments.workingDirectory.<get-workingDirectory>|<get-workingDirectory>(){}[0]
+}
+
+final class ksubprocess/ProcessConfigException : ksubprocess/ProcessException { // ksubprocess/ProcessConfigException|null[0]
+    constructor <init>(kotlin/String? = ..., kotlin/Throwable? = ...) // ksubprocess/ProcessConfigException.<init>|<init>(kotlin.String?;kotlin.Throwable?){}[0]
+}
+
+final class ksubprocess/ProcessExitException : ksubprocess/ProcessException { // ksubprocess/ProcessExitException|null[0]
+    constructor <init>(ksubprocess/CommunicateResult) // ksubprocess/ProcessExitException.<init>|<init>(ksubprocess.CommunicateResult){}[0]
+
+    final val result // ksubprocess/ProcessExitException.result|{}result[0]
+        final fun <get-result>(): ksubprocess/CommunicateResult // ksubprocess/ProcessExitException.result.<get-result>|<get-result>(){}[0]
+}
+
+open class ksubprocess/ProcessArgumentBuilder { // ksubprocess/ProcessArgumentBuilder|null[0]
+    constructor <init>() // ksubprocess/ProcessArgumentBuilder.<init>|<init>(){}[0]
+
+    final val arguments // ksubprocess/ProcessArgumentBuilder.arguments|{}arguments[0]
+        final fun <get-arguments>(): kotlin.collections/MutableList<kotlin/String> // ksubprocess/ProcessArgumentBuilder.arguments.<get-arguments>|<get-arguments>(){}[0]
+    final val environment // ksubprocess/ProcessArgumentBuilder.environment|{}environment[0]
+        final fun <get-environment>(): kotlin.collections/MutableMap<kotlin/String, kotlin/String> // ksubprocess/ProcessArgumentBuilder.environment.<get-environment>|<get-environment>(){}[0]
+    final val isEnvironmentModified // ksubprocess/ProcessArgumentBuilder.isEnvironmentModified|{}isEnvironmentModified[0]
+        final fun <get-isEnvironmentModified>(): kotlin/Boolean // ksubprocess/ProcessArgumentBuilder.isEnvironmentModified.<get-isEnvironmentModified>|<get-isEnvironmentModified>(){}[0]
+
+    final var stderr // ksubprocess/ProcessArgumentBuilder.stderr|{}stderr[0]
+        final fun <get-stderr>(): ksubprocess/Redirect // ksubprocess/ProcessArgumentBuilder.stderr.<get-stderr>|<get-stderr>(){}[0]
+        final fun <set-stderr>(ksubprocess/Redirect) // ksubprocess/ProcessArgumentBuilder.stderr.<set-stderr>|<set-stderr>(ksubprocess.Redirect){}[0]
+    final var stdin // ksubprocess/ProcessArgumentBuilder.stdin|{}stdin[0]
+        final fun <get-stdin>(): ksubprocess/Redirect // ksubprocess/ProcessArgumentBuilder.stdin.<get-stdin>|<get-stdin>(){}[0]
+        final fun <set-stdin>(ksubprocess/Redirect) // ksubprocess/ProcessArgumentBuilder.stdin.<set-stdin>|<set-stdin>(ksubprocess.Redirect){}[0]
+    final var stdout // ksubprocess/ProcessArgumentBuilder.stdout|{}stdout[0]
+        final fun <get-stdout>(): ksubprocess/Redirect // ksubprocess/ProcessArgumentBuilder.stdout.<get-stdout>|<get-stdout>(){}[0]
+        final fun <set-stdout>(ksubprocess/Redirect) // ksubprocess/ProcessArgumentBuilder.stdout.<set-stdout>|<set-stdout>(ksubprocess.Redirect){}[0]
+    final var workingDirectory // ksubprocess/ProcessArgumentBuilder.workingDirectory|{}workingDirectory[0]
+        final fun <get-workingDirectory>(): kotlin/String? // ksubprocess/ProcessArgumentBuilder.workingDirectory.<get-workingDirectory>|<get-workingDirectory>(){}[0]
+        final fun <set-workingDirectory>(kotlin/String?) // ksubprocess/ProcessArgumentBuilder.workingDirectory.<set-workingDirectory>|<set-workingDirectory>(kotlin.String?){}[0]
+
+    final fun arg(kotlin/String) // ksubprocess/ProcessArgumentBuilder.arg|arg(kotlin.String){}[0]
+    final fun args(kotlin.collections/Collection<kotlin/String>) // ksubprocess/ProcessArgumentBuilder.args|args(kotlin.collections.Collection<kotlin.String>){}[0]
+    final fun args(kotlin/Array<out kotlin/String>...) // ksubprocess/ProcessArgumentBuilder.args|args(kotlin.Array<out|kotlin.String>...){}[0]
+    final fun build(): ksubprocess/ProcessArguments // ksubprocess/ProcessArgumentBuilder.build|build(){}[0]
+    final fun stderr(kotlin/String, kotlin/Boolean = ...) // ksubprocess/ProcessArgumentBuilder.stderr|stderr(kotlin.String;kotlin.Boolean){}[0]
+    final fun stdin(kotlin/String) // ksubprocess/ProcessArgumentBuilder.stdin|stdin(kotlin.String){}[0]
+    final fun stdout(kotlin/String, kotlin/Boolean = ...) // ksubprocess/ProcessArgumentBuilder.stdout|stdout(kotlin.String;kotlin.Boolean){}[0]
+}
+
+open class ksubprocess/ProcessException : kotlin/Exception { // ksubprocess/ProcessException|null[0]
+    constructor <init>(kotlin/String? = ..., kotlin/Throwable? = ...) // ksubprocess/ProcessException.<init>|<init>(kotlin.String?;kotlin.Throwable?){}[0]
+}
+
+sealed class ksubprocess/Redirect { // ksubprocess/Redirect|null[0]
+    final class Read : ksubprocess/Redirect { // ksubprocess/Redirect.Read|null[0]
+        constructor <init>(kotlin/String) // ksubprocess/Redirect.Read.<init>|<init>(kotlin.String){}[0]
+
+        final val file // ksubprocess/Redirect.Read.file|{}file[0]
+            final fun <get-file>(): kotlin/String // ksubprocess/Redirect.Read.file.<get-file>|<get-file>(){}[0]
+
+        final fun toString(): kotlin/String // ksubprocess/Redirect.Read.toString|toString(){}[0]
+    }
+
+    final class Write : ksubprocess/Redirect { // ksubprocess/Redirect.Write|null[0]
+        constructor <init>(kotlin/String, kotlin/Boolean = ...) // ksubprocess/Redirect.Write.<init>|<init>(kotlin.String;kotlin.Boolean){}[0]
+
+        final val append // ksubprocess/Redirect.Write.append|{}append[0]
+            final fun <get-append>(): kotlin/Boolean // ksubprocess/Redirect.Write.append.<get-append>|<get-append>(){}[0]
+        final val file // ksubprocess/Redirect.Write.file|{}file[0]
+            final fun <get-file>(): kotlin/String // ksubprocess/Redirect.Write.file.<get-file>|<get-file>(){}[0]
+
+        final fun toString(): kotlin/String // ksubprocess/Redirect.Write.toString|toString(){}[0]
+    }
+
+    final object Inherit : ksubprocess/Redirect { // ksubprocess/Redirect.Inherit|null[0]
+        final fun toString(): kotlin/String // ksubprocess/Redirect.Inherit.toString|toString(){}[0]
+    }
+
+    final object Null : ksubprocess/Redirect { // ksubprocess/Redirect.Null|null[0]
+        final fun toString(): kotlin/String // ksubprocess/Redirect.Null.toString|toString(){}[0]
+    }
+
+    final object Pipe : ksubprocess/Redirect { // ksubprocess/Redirect.Pipe|null[0]
+        final fun toString(): kotlin/String // ksubprocess/Redirect.Pipe.toString|toString(){}[0]
+    }
+
+    final object Stdout : ksubprocess/Redirect { // ksubprocess/Redirect.Stdout|null[0]
+        final fun toString(): kotlin/String // ksubprocess/Redirect.Stdout.toString|toString(){}[0]
+    }
+}
+
+final inline fun ksubprocess/Process(kotlin/Function1<ksubprocess/ProcessArgumentBuilder, kotlin/Unit>): ksubprocess/Process // ksubprocess/Process|Process(kotlin.Function1<ksubprocess.ProcessArgumentBuilder,kotlin.Unit>){}[0]
+final inline fun ksubprocess/ProcessArguments(kotlin/Function1<ksubprocess/ProcessArgumentBuilder, kotlin/Unit>): ksubprocess/ProcessArguments // ksubprocess/ProcessArguments|ProcessArguments(kotlin.Function1<ksubprocess.ProcessArgumentBuilder,kotlin.Unit>){}[0]
+final suspend fun (ksubprocess/Process).ksubprocess/communicate(kotlin/String = ..., kotlin.time/Duration? = ..., kotlin.time/Duration? = ...): ksubprocess/CommunicateResult // ksubprocess/communicate|communicate@ksubprocess.Process(kotlin.String;kotlin.time.Duration?;kotlin.time.Duration?){}[0]
+final suspend fun ksubprocess/exec(kotlin/Function1<ksubprocess/ExecArgumentsBuilder, kotlin/Unit>): ksubprocess/CommunicateResult // ksubprocess/exec|exec(kotlin.Function1<ksubprocess.ExecArgumentsBuilder,kotlin.Unit>){}[0]
+
+// Targets: [apple, linux]
+sealed class ksubprocess.io/PosixException : kotlin/Exception { // ksubprocess.io/PosixException|null[0]
+    final val errno // ksubprocess.io/PosixException.errno|{}errno[0]
+        final fun <get-errno>(): kotlin/Int // ksubprocess.io/PosixException.errno.<get-errno>|<get-errno>(){}[0]
+
+    final class AddressAlreadyInUseException : ksubprocess.io/PosixException { // ksubprocess.io/PosixException.AddressAlreadyInUseException|null[0]
+        constructor <init>(kotlin/String) // ksubprocess.io/PosixException.AddressAlreadyInUseException.<init>|<init>(kotlin.String){}[0]
+    }
+
+    final class BadFileDescriptorException : ksubprocess.io/PosixException { // ksubprocess.io/PosixException.BadFileDescriptorException|null[0]
+        constructor <init>(kotlin/String) // ksubprocess.io/PosixException.BadFileDescriptorException.<init>|<init>(kotlin.String){}[0]
+    }
+
+    final class BadMessageException : ksubprocess.io/PosixException { // ksubprocess.io/PosixException.BadMessageException|null[0]
+        constructor <init>(kotlin/String) // ksubprocess.io/PosixException.BadMessageException.<init>|<init>(kotlin.String){}[0]
+    }
+
+    final class ConnectionAbortedException : ksubprocess.io/PosixException { // ksubprocess.io/PosixException.ConnectionAbortedException|null[0]
+        constructor <init>(kotlin/String) // ksubprocess.io/PosixException.ConnectionAbortedException.<init>|<init>(kotlin.String){}[0]
+    }
+
+    final class ConnectionRefusedException : ksubprocess.io/PosixException { // ksubprocess.io/PosixException.ConnectionRefusedException|null[0]
+        constructor <init>(kotlin/String) // ksubprocess.io/PosixException.ConnectionRefusedException.<init>|<init>(kotlin.String){}[0]
+    }
+
+    final class ConnectionResetException : ksubprocess.io/PosixException { // ksubprocess.io/PosixException.ConnectionResetException|null[0]
+        constructor <init>(kotlin/String) // ksubprocess.io/PosixException.ConnectionResetException.<init>|<init>(kotlin.String){}[0]
+    }
+
+    final class InterruptedException : ksubprocess.io/PosixException { // ksubprocess.io/PosixException.InterruptedException|null[0]
+        constructor <init>(kotlin/String) // ksubprocess.io/PosixException.InterruptedException.<init>|<init>(kotlin.String){}[0]
+    }
+
+    final class InvalidArgumentException : ksubprocess.io/PosixException { // ksubprocess.io/PosixException.InvalidArgumentException|null[0]
+        constructor <init>(kotlin/String) // ksubprocess.io/PosixException.InvalidArgumentException.<init>|<init>(kotlin.String){}[0]
+    }
+
+    final class NoMemoryException : ksubprocess.io/PosixException { // ksubprocess.io/PosixException.NoMemoryException|null[0]
+        constructor <init>(kotlin/String) // ksubprocess.io/PosixException.NoMemoryException.<init>|<init>(kotlin.String){}[0]
+    }
+
+    final class NoSuchFileException : ksubprocess.io/PosixException { // ksubprocess.io/PosixException.NoSuchFileException|null[0]
+        constructor <init>(kotlin/String) // ksubprocess.io/PosixException.NoSuchFileException.<init>|<init>(kotlin.String){}[0]
+    }
+
+    final class NotConnectedException : ksubprocess.io/PosixException { // ksubprocess.io/PosixException.NotConnectedException|null[0]
+        constructor <init>(kotlin/String) // ksubprocess.io/PosixException.NotConnectedException.<init>|<init>(kotlin.String){}[0]
+    }
+
+    final class NotSocketException : ksubprocess.io/PosixException { // ksubprocess.io/PosixException.NotSocketException|null[0]
+        constructor <init>(kotlin/String) // ksubprocess.io/PosixException.NotSocketException.<init>|<init>(kotlin.String){}[0]
+    }
+
+    final class OverflowException : ksubprocess.io/PosixException { // ksubprocess.io/PosixException.OverflowException|null[0]
+        constructor <init>(kotlin/String) // ksubprocess.io/PosixException.OverflowException.<init>|<init>(kotlin.String){}[0]
+    }
+
+    final class PosixErrnoException : ksubprocess.io/PosixException { // ksubprocess.io/PosixException.PosixErrnoException|null[0]
+        constructor <init>(kotlin/Int, kotlin/String) // ksubprocess.io/PosixException.PosixErrnoException.<init>|<init>(kotlin.Int;kotlin.String){}[0]
+    }
+
+    final class TimeoutIOException : ksubprocess.io/PosixException { // ksubprocess.io/PosixException.TimeoutIOException|null[0]
+        constructor <init>(kotlin/String) // ksubprocess.io/PosixException.TimeoutIOException.<init>|<init>(kotlin.String){}[0]
+    }
+
+    final class TryAgainException : ksubprocess.io/PosixException { // ksubprocess.io/PosixException.TryAgainException|null[0]
+        constructor <init>(kotlin/Int = ..., kotlin/String) // ksubprocess.io/PosixException.TryAgainException.<init>|<init>(kotlin.Int;kotlin.String){}[0]
+    }
+
+    final object Companion { // ksubprocess.io/PosixException.Companion|null[0]
+        final fun forErrno(kotlin/String, kotlin/Int = ...): ksubprocess.io/PosixException // ksubprocess.io/PosixException.Companion.forErrno|forErrno(kotlin.String;kotlin.Int){}[0]
+    }
+}
+
+// Targets: [linux, mingwX64.windows]
+final object ksubprocess/Environment : kotlin.collections/AbstractMap<kotlin/String, kotlin/String>, kotlin.collections/Map<kotlin/String, kotlin/String> { // ksubprocess/Environment|null[0]
+    final val caseInsensitive // ksubprocess/Environment.caseInsensitive|{}caseInsensitive[0]
+        final fun <get-caseInsensitive>(): kotlin/Boolean // ksubprocess/Environment.caseInsensitive.<get-caseInsensitive>|<get-caseInsensitive>(){}[0]
+    final val entries // ksubprocess/Environment.entries|{}entries[0]
+        final fun <get-entries>(): kotlin.collections/Set<kotlin.collections/Map.Entry<kotlin/String, kotlin/String>> // ksubprocess/Environment.entries.<get-entries>|<get-entries>(){}[0]
+
+    final fun containsKey(kotlin/String): kotlin/Boolean // ksubprocess/Environment.containsKey|containsKey(kotlin.String){}[0]
+    final fun get(kotlin/String): kotlin/String? // ksubprocess/Environment.get|get(kotlin.String){}[0]
+}
+
+// Targets: [linux]
+final val ksubprocess/executablePaths // ksubprocess/executablePaths|{}executablePaths[0]
+    final fun <get-executablePaths>(): kotlin.collections/List<kotlin/String> // ksubprocess/executablePaths.<get-executablePaths>|<get-executablePaths>(){}[0]
+
+// Targets: [linux]
+final fun ksubprocess/findExecutable(kotlin/String): kotlin/String? // ksubprocess/findExecutable|findExecutable(kotlin.String){}[0]
+
+// Targets: [apple]
+final object ksubprocess/Environment : kotlin.collections/Map<kotlin/String, kotlin/String> { // ksubprocess/Environment|null[0]
+    final val caseInsensitive // ksubprocess/Environment.caseInsensitive|{}caseInsensitive[0]
+        final fun <get-caseInsensitive>(): kotlin/Boolean // ksubprocess/Environment.caseInsensitive.<get-caseInsensitive>|<get-caseInsensitive>(){}[0]
+    final val entries // ksubprocess/Environment.entries|{}entries[0]
+        final fun <get-entries>(): kotlin.collections/Set<kotlin.collections/Map.Entry<kotlin/String, kotlin/String>> // ksubprocess/Environment.entries.<get-entries>|<get-entries>(){}[0]
+    final val keys // ksubprocess/Environment.keys|{}keys[0]
+        final fun <get-keys>(): kotlin.collections/Set<kotlin/String> // ksubprocess/Environment.keys.<get-keys>|<get-keys>(){}[0]
+    final val size // ksubprocess/Environment.size|{}size[0]
+        final fun <get-size>(): kotlin/Int // ksubprocess/Environment.size.<get-size>|<get-size>(){}[0]
+    final val values // ksubprocess/Environment.values|{}values[0]
+        final fun <get-values>(): kotlin.collections/Collection<kotlin/String> // ksubprocess/Environment.values.<get-values>|<get-values>(){}[0]
+
+    final fun containsKey(kotlin/String): kotlin/Boolean // ksubprocess/Environment.containsKey|containsKey(kotlin.String){}[0]
+    final fun containsValue(kotlin/String): kotlin/Boolean // ksubprocess/Environment.containsValue|containsValue(kotlin.String){}[0]
+    final fun get(kotlin/String): kotlin/String? // ksubprocess/Environment.get|get(kotlin.String){}[0]
+    final fun isEmpty(): kotlin/Boolean // ksubprocess/Environment.isEmpty|isEmpty(){}[0]
+}
+
+// Targets: [mingwX64.windows]
+final class ksubprocess.io/WindowsException : kotlin/Exception { // ksubprocess.io/WindowsException|null[0]
+    constructor <init>(kotlin/UInt, kotlin/String) // ksubprocess.io/WindowsException.<init>|<init>(kotlin.UInt;kotlin.String){}[0]
+
+    final val errorCode // ksubprocess.io/WindowsException.errorCode|{}errorCode[0]
+        final fun <get-errorCode>(): kotlin/UInt // ksubprocess.io/WindowsException.errorCode.<get-errorCode>|<get-errorCode>(){}[0]
+}

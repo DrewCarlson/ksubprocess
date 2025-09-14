@@ -70,4 +70,4 @@ jobs:
           key: ${{ runner.os }}-${{ hashFiles('gradle.properties') }}
 
       - name: Check public api compatibility
-        run: ./gradlew apiCheck
+        run: ./gradlew checkLegacyAbi
