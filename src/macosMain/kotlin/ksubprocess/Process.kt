@@ -18,11 +18,9 @@ package ksubprocess
 import kotlinx.cinterop.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.io.Sink
+import kotlinx.io.Source
 import ksubprocess.io.*
-import okio.BufferedSink
-import okio.BufferedSource
-import okio.FileHandle
-import okio.buffer
 import platform.Foundation.*
 import platform.posix.*
 import kotlin.native.concurrent.*
@@ -155,25 +153,25 @@ public actual class Process actual constructor(public actual val args: ProcessAr
         }
     }
 
-    private val stdinHandle: FileHandle? by lazy {
+    private val stdinHandle: KFileHandle? by lazy {
         if (stdinFd != -1) {
             OkioNSFileHandle(true, NSFileHandle(stdinFd, true))
         } else null
     }
-    private val stdoutHandle: FileHandle? by lazy {
+    private val stdoutHandle: KFileHandle? by lazy {
         if (stdoutFd != -1) {
             OkioNSFileHandle(false, NSFileHandle(stdoutFd, true))
         } else null
     }
-    private val stderrHandle: FileHandle? by lazy {
+    private val stderrHandle: KFileHandle? by lazy {
         if (stderrFd != -1) {
             OkioNSFileHandle(false, NSFileHandle(stderrFd, true))
         } else null
     }
 
-    public actual val stdin: BufferedSink? by lazy { stdinHandle?.sink()?.buffer() }
-    public actual val stdout: BufferedSource? by lazy { stdoutHandle?.source()?.buffer() }
-    public actual val stderr: BufferedSource? by lazy { stderrHandle?.source()?.buffer() }
+    public actual val stdin: Sink? by lazy { stdinHandle?.sink() }
+    public actual val stdout: Source? by lazy { stdoutHandle?.source() }
+    public actual val stderr: Source? by lazy { stderrHandle?.source() }
 
     public actual val stdoutLines: Flow<String>
         get() = stdout.lines()

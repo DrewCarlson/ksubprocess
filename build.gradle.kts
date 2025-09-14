@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.spotless)
     //alias(libs.plugins.completeKotlin)
     alias(libs.plugins.mavenPublish)
+    alias(libs.plugins.atomicfu)
 }
 
 repositories {
@@ -50,8 +51,8 @@ kotlin {
         }
         commonMain {
             dependencies {
-                api(libs.okio.core)
                 api(libs.coroutines.core)
+                api(libs.kotlinx.io.core)
             }
         }
 

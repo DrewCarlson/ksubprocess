@@ -16,15 +16,14 @@
 package ksubprocess.io
 
 import kotlinx.cinterop.*
+import kotlinx.io.IOException
 import ksubprocess.close
-import okio.FileHandle
-import okio.IOException
 import platform.windows.*
 
 internal class WindowsFileHandle(
     readWrite: Boolean,
     private val file: HANDLE?
-) : FileHandle(readWrite) {
+) : KFileHandle(readWrite) {
     override fun protectedSize(): Long {
         memScoped {
             val result = alloc<LARGE_INTEGER>()

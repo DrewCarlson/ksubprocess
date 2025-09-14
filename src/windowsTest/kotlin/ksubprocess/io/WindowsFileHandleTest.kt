@@ -16,7 +16,8 @@
 package ksubprocess.io
 
 import kotlinx.cinterop.*
-import okio.buffer
+import kotlinx.io.readString
+import kotlinx.io.writeString
 import platform.windows.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -48,9 +49,9 @@ class WindowsFileHandleTest {
         }
 
         val sourceHandle = WindowsFileHandle(false, fd)
-        val source = sourceHandle.source().buffer()
+        val source = sourceHandle.source()
         try {
-            val text = source.readUtf8()
+            val text = source.readString()
             val expected = """
                 Line1
                 Line2
@@ -84,17 +85,17 @@ class WindowsFileHandleTest {
         }
 
         val readHandle = WindowsFileHandle(false, readPipe)
-        val readStream = readHandle.source().buffer()
+        val readStream = readHandle.source()
         val writeHandle = WindowsFileHandle(true, writePipe)
-        val writeStream = writeHandle.sink().buffer()
+        val writeStream = writeHandle.sink()
         try {
             val text = "Hello World!"
 
-            writeStream.writeUtf8(text)
+            writeStream.writeString(text)
             writeStream.close()
             writeHandle.close()
 
-            val afterPipe = readStream.readUtf8()
+            val afterPipe = readStream.readString()
 
             assertEquals(text, afterPipe)
         } finally {
