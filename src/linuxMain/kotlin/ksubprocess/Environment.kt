@@ -51,18 +51,22 @@ public actual object Environment : AbstractMap<String, String>(), Map<String, St
 
         override fun iterator() = object : Iterator<Map.Entry<String, String>> {
 
-            var ep = __environ
+            private var ep = __environ
 
             override fun hasNext(): Boolean {
                 return ep?.get(0) != null
             }
 
+            @Suppress("ReplaceSubstringWithTake")
             override fun next(): Map.Entry<String, String> {
                 // get current element as kstring
                 val cur = ep?.get(0)?.toKString() ?: throw NoSuchElementException()
 
                 // separate key/value
-                val (key, value) = cur.split('=', limit = 2)
+                val idx = cur.indexOf('=')
+                val key = cur.substring(0, idx)
+                val value = cur.substring(idx + 1)
+
                 // increment
                 ep += 1
                 return EnvEntry(key, value)
