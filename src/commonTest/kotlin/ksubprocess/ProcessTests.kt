@@ -18,8 +18,10 @@ package ksubprocess
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
+import okio.FileSystem
 import okio.Path
 import okio.Path.Companion.toPath
+import okio.SYSTEM
 import okio.buffer
 import okio.use
 import kotlin.js.JsName
@@ -120,8 +122,8 @@ class ProcessTests {
         // wait for termination
         proc.waitFor()
 
-        val fileContent = CurrentFs.source(outPath).buffer().use { it.readUtf8() }
-        CurrentFs.delete(outPath)
+        val fileContent = FileSystem.SYSTEM.source(outPath).buffer().use { it.readUtf8() }
+        FileSystem.SYSTEM.delete(outPath)
 
         assertEquals("Hello World!", fileContent.trimEnd())
 
