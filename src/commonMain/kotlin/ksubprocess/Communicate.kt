@@ -62,7 +62,7 @@ public data class CommunicateResult(
  * @return result of communication
  *
  * @throws ProcessException if another process error occurs
- * @throws okio.IOException if an IO error occurs in the pipes
+ * @throws kotlinx.io.IOException if an IO error occurs in the pipes
  */
 public suspend fun Process.communicate(
     input: String = "",

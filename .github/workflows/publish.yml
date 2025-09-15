@@ -81,7 +81,7 @@ jobs:
           key: ${{ runner.os }}-${{ hashFiles('gradle.properties') }}
 
       - name: Build Docs
-        run: ./gradlew clean dokkaHtml
+        run: ./gradlew clean dokkaGenerate
 
       - name: Publish Docs
         uses: JamesIves/github-pages-deploy-action@v4.6.3

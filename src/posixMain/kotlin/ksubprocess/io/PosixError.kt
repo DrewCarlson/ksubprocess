@@ -68,7 +68,7 @@ public sealed class PosixException(public val errno: Int, message: String) : Exc
          * Create the corresponding instance of PosixException
          * with error message provided by the underlying POSIX implementation.
          *
-         * @param errno error code returned by [posix.platform.errno]
+         * @param errno error code returned by [platform.posix.errno]
          * @param function optional function name to be included to the exception message
          * @return an instance of [PosixException] or it's subtype
          */
