@@ -55,7 +55,7 @@ jobs:
           report_paths: 'build/test-results/**/TEST-*.xml'
 
       - name: Archive test reports
-        uses: actions/upload-artifact@de65e23aa2b7e23d713bb51fbfcb6d502f8667d8
+        uses: actions/upload-artifact@47309c993abb98030a35d55ef7ff34b7fa1074b5
         if: always()
         with:
           name: test-reports-${{ runner.os }}
