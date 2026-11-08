@@ -4,11 +4,14 @@ import kotlinx.cinterop.alloc
 import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.ptr
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.io.buffered
 import kotlinx.io.files.Path
@@ -39,6 +42,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.measureTimedValue
 
 class DescriptorTests {
 
@@ -211,6 +215,22 @@ class DescriptorTests {
         val content = SystemFileSystem.source(path).buffered().use { it.readString() }
         SystemFileSystem.delete(path)
         assertEquals("second\nthird\n", content)
+    }
+
+    @Test
+    fun outputIsDeliveredWhileChildIsRunning() = runBlocking<Unit> {
+        val proc = shell("echo first; sleep 5; echo second") { stdout = Redirect.Pipe }
+        try {
+            val (line, elapsed) = withContext(Dispatchers.IO) {
+                measureTimedValue { proc.stdoutLines.first() }
+            }
+            assertEquals("first", line)
+            assertTrue(elapsed < 3.seconds, "First line took $elapsed")
+            assertTrue(proc.isAlive)
+        } finally {
+            proc.kill()
+            proc.waitFor()
+        }
     }
 
     @Test

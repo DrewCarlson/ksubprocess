@@ -131,30 +131,17 @@ internal abstract class KFileHandle(
         require(size - offset >= count) { "size - offset < byteCount" }
     }
 
+    // A single read: returning what is available keeps pipe output flowing while the child runs.
     private fun readNoCloseCheck(fileOffset: Long, sink: Buffer, byteCount: Long): Long {
         require(byteCount >= 0L) { "byteCount < 0: $byteCount" }
+        if (byteCount == 0L) return 0L
 
-        var currentOffset = fileOffset
-        val targetOffset = fileOffset + byteCount
-        var sawAny = false
-
-        while (currentOffset < targetOffset) {
-            val writtenThisRound =
-                UnsafeBufferOperations.writeToTail(sink, 1) { data: ByteArray, offset: Int, length: Int ->
-                    val toRead = minOf((targetOffset - currentOffset).toInt(), length)
-                    if (toRead <= 0) return@writeToTail 0
-                    val rc = protectedRead(currentOffset, data, offset, toRead)
-                    if (rc == -1) 0 else rc
-                }
-            if (writtenThisRound <= 0) {
-                if (!sawAny) return -1L
-                break
-            }
-            sawAny = true
-            currentOffset += writtenThisRound
+        var result = -1
+        UnsafeBufferOperations.writeToTail(sink, 1) { data: ByteArray, offset: Int, length: Int ->
+            result = protectedRead(fileOffset, data, offset, minOf(byteCount, length.toLong()).toInt())
+            if (result == -1) 0 else result
         }
-
-        return currentOffset - fileOffset
+        return result.toLong()
     }
 
     private fun writeNoCloseCheck(fileOffset: Long, source: Buffer, byteCount: Long) {
