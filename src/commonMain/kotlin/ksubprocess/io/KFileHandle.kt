@@ -48,6 +48,12 @@ internal abstract class KFileHandle(
         return FileHandleSink(this, fileOffset).buffered()
     }
 
+    /** Returns a source that takes ownership of this handle: closing the source closes the handle. */
+    fun ownedSource(): Source = source().also { close() }
+
+    /** Returns a sink that takes ownership of this handle: closing the sink closes the handle. */
+    fun ownedSink(): Sink = sink().also { close() }
+
     /** Close this handle. It is safe to call multiple times. */
     override fun close() {
         lock.withLock {
@@ -174,20 +180,33 @@ internal abstract class KFileHandle(
         var position: Long,
     ) : RawSource {
         var closed = false
+        private var released = false
 
         override fun readAtMostTo(sink: Buffer, byteCount: Long): Long {
             check(!closed) { "closed" }
+            if (released) return -1L
             val result = fileHandle.readNoCloseCheck(position, sink, byteCount)
-            if (result != -1L) position += result
+            if (result == -1L) {
+                // Nothing can follow EOF on a pipe, so give the descriptor back right away.
+                release()
+            } else {
+                position += result
+            }
             return result
         }
 
         override fun close() {
             if (closed) return
             closed = true
+            release()
+        }
+
+        private fun release() {
+            if (released) return
+            released = true
             fileHandle.lock.withLock {
                 fileHandle.openStreamCount--
-                if (fileHandle.openStreamCount != 0 || !fileHandle.closed) return@close
+                if (fileHandle.openStreamCount != 0 || !fileHandle.closed) return
             }
             fileHandle.protectedClose()
         }

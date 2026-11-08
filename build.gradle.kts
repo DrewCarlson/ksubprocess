@@ -76,6 +76,18 @@ kotlin {
             dependsOn(posixMain)
         }
 
+        val posixTest by creating {
+            dependsOn(commonTest.get())
+        }
+
+        linuxTest {
+            dependsOn(posixTest)
+        }
+
+        macosTest {
+            dependsOn(posixTest)
+        }
+
         jvmTest {
             dependencies {
                 implementation(kotlin("test"))

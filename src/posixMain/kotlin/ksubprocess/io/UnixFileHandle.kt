@@ -15,14 +15,26 @@
  */
 package ksubprocess.io
 
+import kotlinx.atomicfu.atomic
 import kotlinx.cinterop.*
 import platform.posix.*
-
+import kotlin.experimental.ExperimentalNativeApi
+import kotlin.native.ref.createCleaner
 
 internal class UnixFileHandle(
     readWrite: Boolean,
-    private val file: CPointer<FILE>
+    file: CPointer<FILE>
 ) : KFileHandle(readWrite) {
+
+    private val ref = FileRef(file)
+
+    // closes the stream if the handle becomes unreachable without being closed
+    @OptIn(ExperimentalNativeApi::class)
+    @Suppress("unused")
+    private val cleaner = createCleaner(ref) { it.close() }
+
+    private val file: CPointer<FILE>
+        get() = ref.file
 
     override fun protectedSize(): Long {
         memScoped {
@@ -91,8 +103,17 @@ internal class UnixFileHandle(
     }
 
     override fun protectedClose() {
-        if (fclose(file) != 0) {
+        if (ref.close() != 0) {
             throw PosixException.forErrno("fclose")
         }
     }
+}
+
+private class FileRef(file: CPointer<FILE>) {
+    private val ptr = atomic<CPointer<FILE>?>(file)
+
+    val file: CPointer<FILE>
+        get() = checkNotNull(ptr.value) { "closed" }
+
+    fun close(): Int = ptr.getAndSet(null)?.let { fclose(it) } ?: 0
 }

@@ -55,6 +55,11 @@ public data class CommunicateResult(
  * timeout for graceful termination can be set, afterwards the child will be [killed][Process.kill]. The kill timeout
  * can also be set to [Duration.ZERO] to skip the graceful termination attempt and kill the child directly.
  *
+ * If [killTimeout] is null, a timed out child is only terminated and this call waits for it to exit.
+ *
+ * If the calling coroutine is cancelled or an error occurs, the child is killed and reaped before the exception is
+ * rethrown.
+ *
  * @param input stdin pipe input. Ignored if stdin isn't a pipe
  * @param timeout timeout for child process if desired
  * @param killTimeout extra timeout before the terminated child is killed. May be ZERO to kill directly
@@ -68,44 +73,59 @@ public suspend fun Process.communicate(
     input: String = "",
     timeout: Duration? = null,
     killTimeout: Duration? = null
-): CommunicateResult = coroutineScope {
-    // start output pipe collectors
-    val stdoutCollector =
-        if (args.stdout == Redirect.Pipe) async { requireNotNull(stdout).readString() }
-        else null
-    val stderrCollector =
-        if (args.stderr == Redirect.Pipe) async { requireNotNull(stderr).readString() }
-        else null
+): CommunicateResult {
+    val stdoutSource = if (args.stdout == Redirect.Pipe) requireNotNull(stdout) else null
+    val stderrSource = if (args.stderr == Redirect.Pipe) requireNotNull(stderr) else null
+    try {
+        return coroutineScope {
+            // reads block, so keep them off the caller's dispatcher
+            val stdoutCollector = stdoutSource?.let { async(Dispatchers.IO) { it.readString() } }
+            val stderrCollector = stderrSource?.let { async(Dispatchers.IO) { it.readString() } }
 
-    // push out the input data
-    stdin?.writeString(input)
-    closeStdin()
+            try {
+                // push out the input data
+                stdin?.writeString(input)
+                closeStdin()
 
-    // wait with timeout if needed
-    if (timeout != null && waitFor(timeout) == null) {
-        // didn't exit in timeout, so terminate explicitly
-        if (killTimeout == Duration.ZERO) {
-            // kill directly
-            kill()
-        } else {
-            // try gently first
-            terminate()
+                // wait with timeout if needed
+                if (timeout != null && waitFor(timeout) == null) {
+                    // didn't exit in timeout, so terminate explicitly
+                    if (killTimeout == Duration.ZERO) {
+                        // kill directly
+                        kill()
+                    } else {
+                        // try gently first
+                        terminate()
 
-            // wait a little more and kill if requested
-            if (killTimeout != null && waitFor(killTimeout) == null) {
-                kill()
+                        // wait a little more and kill if requested
+                        if (killTimeout != null && waitFor(killTimeout) == null) {
+                            kill()
+                        }
+                    }
+                }
+
+                // wait for the process to actually die
+                val exitCode = waitFor()
+
+                CommunicateResult(
+                    exitCode,
+                    stdoutCollector?.await().orEmpty(),
+                    stderrCollector?.await().orEmpty()
+                )
+            } catch (e: Throwable) {
+                // don't leave a running child or a zombie behind; the collectors finish once it is gone
+                withContext(NonCancellable) {
+                    runCatching { closeStdin() }
+                    if (exitCode == null) {
+                        runCatching { kill() }
+                        waitFor()
+                    }
+                }
+                throw e
             }
         }
+    } finally {
+        stdoutSource?.close()
+        stderrSource?.close()
     }
-
-    // wait for the process to actually die
-    val exitCode = waitFor()
-
-    // wait for output collectors
-    val results = listOfNotNull(stdoutCollector, stderrCollector).awaitAll()
-    val output = results.firstOrNull().orEmpty()
-    val error = results.lastOrNull().orEmpty()
-
-    // return result
-    CommunicateResult(exitCode, output, error)
 }

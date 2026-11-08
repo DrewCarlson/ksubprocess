@@ -275,6 +275,20 @@ class ProcessTests {
     }
 
     @Test
+    @JsName("testReadAfterExit")
+    fun `Output remains readable after exit`() = runTest {
+        val proc = Process {
+            testProgram("HelloWorldKt")
+            stdout = Redirect.Pipe
+        }
+
+        assertEquals(0, proc.waitFor())
+        assertFalse(proc.isAlive)
+
+        assertEquals("Hello World!", proc.stdout!!.readString().lines().firstOrNull())
+    }
+
+    @Test
     @JsName("testFdsRemainAccessible")
     fun `Process exit leaves file descriptors open until consumed`() = runTest {
         val lineCount = 5

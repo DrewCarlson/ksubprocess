@@ -1,13 +1,47 @@
 package = ksubprocess.iop
 
 ---
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
 #include <errno.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <stdio.h>
 
 #include <sys/types.h>
 #include <sys/wait.h>
 
+static int pipe_cloexec(int* fds) {
+    return pipe2(fds, O_CLOEXEC);
+}
+
+// Move fd out of the stdio range so redirecting another stream cannot overwrite it.
+static int lift_fd(int* fd, int target) {
+    if (*fd == -1 || *fd == target || *fd > STDERR_FILENO) {
+        return 0;
+    }
+    *fd = fcntl(*fd, F_DUPFD_CLOEXEC, STDERR_FILENO + 1);
+    return *fd == -1 ? -1 : 0;
+}
+
+// Make target refer to fd in the executed program. All parent fds are O_CLOEXEC, so the originals close on exec.
+static int redirect_fd(int fd, int target) {
+    if (fd == -1) {
+        return 0;
+    }
+    if (fd == target) {
+        // dup2 would be a no-op and keep O_CLOEXEC set
+        int flags = fcntl(fd, F_GETFD);
+        return flags == -1 ? -1 : fcntl(fd, F_SETFD, flags & ~FD_CLOEXEC);
+    }
+    while (dup2(fd, target) == -1) {
+        if (errno != EINTR) {
+            return -1;
+        }
+    }
+    return 0;
+}
 
 // Execute the process as specified. Assumes we are in the fork.
 static void run_in_fork(
@@ -19,21 +53,14 @@ static void run_in_fork(
         int stderr_fd,
         int stdin_fd
         ) {
-    // set fds if needed
-    if (stdout_fd != -1) {
-        while ((dup2(stdout_fd, STDOUT_FILENO) == -1) && (errno == EINTR)) {}
-        if (stdout_fd != stderr_fd) {
-            // may be the same as stderr, in that case close later
-            close(stdout_fd);
-        }
-    }
-    if (stderr_fd != -1) {
-        while ((dup2(stderr_fd, STDERR_FILENO) == -1) && (errno == EINTR)) {}
-        close(stderr_fd);
-    }
-    if (stdin_fd != -1) {
-        while ((dup2(stdin_fd, STDIN_FILENO) == -1) && (errno == EINTR)) {}
-        close(stdin_fd);
+    if (lift_fd(&stdout_fd, STDOUT_FILENO) != 0 ||
+            lift_fd(&stderr_fd, STDERR_FILENO) != 0 ||
+            lift_fd(&stdin_fd, STDIN_FILENO) != 0 ||
+            redirect_fd(stdout_fd, STDOUT_FILENO) != 0 ||
+            redirect_fd(stderr_fd, STDERR_FILENO) != 0 ||
+            redirect_fd(stdin_fd, STDIN_FILENO) != 0) {
+        perror("Error redirecting standard streams");
+        _exit(1);
     }
 
     // change working directory
@@ -66,25 +93,10 @@ static pid_t fork_and_run(
         char *const* env,
         int stdout_fd,
         int stderr_fd,
-        int stdin_fd,
-        int op_stdout,
-        int op_stderr,
-        int op_stdin
+        int stdin_fd
         ) {
     pid_t pid = fork();
     if (pid == 0) {
-        // close other pipe sides
-        if (op_stdout != -1) {
-            close(op_stdout);
-        }
-        if (op_stderr != -1) {
-            close(op_stderr);
-        }
-        if (op_stdin != -1) {
-            close(op_stdin);
-        }
-
-        // actually run the program
         run_in_fork(executable, args, cd, env, stdout_fd, stderr_fd, stdin_fd);
     }
     return pid;

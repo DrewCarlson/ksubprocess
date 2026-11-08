@@ -15,6 +15,8 @@
  */
 package ksubprocess
 
+import kotlinx.atomicfu.locks.reentrantLock
+import kotlinx.atomicfu.locks.withLock
 import kotlinx.cinterop.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -24,8 +26,11 @@ import ksubprocess.io.KFileHandle
 import ksubprocess.io.PosixException
 import ksubprocess.io.UnixFileHandle
 import ksubprocess.iop.fork_and_run
+import ksubprocess.iop.pipe_cloexec
 import platform.posix.*
+import kotlin.concurrent.Volatile
 import kotlin.time.*
+import kotlin.time.Duration.Companion.milliseconds
 
 internal expect val siginfo_t.exitCode: Int
 
@@ -47,7 +52,7 @@ private data class RedirectFds(val readFd: Int, val writeFd: Int) {
 private fun Redirect.openFds(stream: String): RedirectFds = when (this) {
     Redirect.Null -> {
         val flags = if (stream == "stdin") O_RDONLY else O_WRONLY
-        val fd = open("/dev/null", flags)
+        val fd = open("/dev/null", flags or O_CLOEXEC)
         if (fd == -1) {
             throw ProcessConfigException(
                 "Error opening null file for $stream",
@@ -61,7 +66,7 @@ private fun Redirect.openFds(stream: String): RedirectFds = when (this) {
     Redirect.Pipe -> {
         val fds = IntArray(2)
         val piperes = fds.usePinned {
-            pipe(it.addressOf(0))
+            pipe_cloexec(it.addressOf(0))
         }
         if (piperes == -1) {
             throw ProcessConfigException(
@@ -73,7 +78,7 @@ private fun Redirect.openFds(stream: String): RedirectFds = when (this) {
     }
 
     is Redirect.Read -> {
-        val fd = open(file, O_RDONLY)
+        val fd = open(file, O_RDONLY or O_CLOEXEC)
         if (fd == -1) {
             throw ProcessConfigException(
                 "Error opening input file $file for $stream",
@@ -86,9 +91,9 @@ private fun Redirect.openFds(stream: String): RedirectFds = when (this) {
     is Redirect.Write -> {
         val fd = open(
             file,
-            if (append) O_WRONLY or O_APPEND or O_CREAT
-            else O_WRONLY or O_CREAT or O_TRUNC,
-            0x0777
+            if (append) O_WRONLY or O_APPEND or O_CREAT or O_CLOEXEC
+            else O_WRONLY or O_CREAT or O_TRUNC or O_CLOEXEC,
+            "666".toInt(8)
         )
         if (fd == -1) {
             throw ProcessConfigException(
@@ -100,6 +105,12 @@ private fun Redirect.openFds(stream: String): RedirectFds = when (this) {
     }
 
     Redirect.Stdout -> throw IllegalStateException("Redirect.Stdout must be handled separately.")
+}
+
+private fun Int.toFileHandle(write: Boolean): KFileHandle? {
+    if (this == -1) return null
+    val file = fdopen(this, if (write) "w" else "r") ?: throw PosixException.forErrno("fdopen")
+    return UnixFileHandle(write, file)
 }
 
 private fun MemScope.toCStrVector(data: List<String>): CArrayPointer<CPointerVar<ByteVar>> {
@@ -116,7 +127,11 @@ public actual class Process actual constructor(
 ) {
 
     // set to true when done
+    @Volatile
     private var terminated = false
+
+    // serializes waitid so the child is reaped exactly once
+    private val stateLock = reentrantLock()
 
     // exit status - only valid once terminated = true
     private var _exitStatus = -1
@@ -173,9 +188,6 @@ public actual class Process actual constructor(
                     stdout_fd = stdout.writeFd,
                     stderr_fd = stderr.writeFd,
                     stdin_fd = stdin.readFd,
-                    op_stdout = stdout.readFd,
-                    op_stderr = stderr.readFd,
-                    op_stdin = stdin.writeFd
                 )
             }
             if (pid == -1) {
@@ -192,9 +204,11 @@ public actual class Process actual constructor(
             stderrFd = stderr.readFd
             stdinFd = stdin.writeFd
 
-            // close unused fds (don't need to watch stderr=stdout here)
+            // close unused fds, stderr shares the stdout fd when merged
             stdout.writeFd.closeFd()
-            stderr.writeFd.closeFd()
+            if (args.stderr != Redirect.Stdout) {
+                stderr.writeFd.closeFd()
+            }
             stdin.readFd.closeFd()
         } catch (t: Throwable) {
             // close fds on error
@@ -210,21 +224,25 @@ public actual class Process actual constructor(
         }
     }
 
+    private val stdinHandle: KFileHandle? = stdinFd.toFileHandle(write = true)
+    private val stdoutHandle: KFileHandle? = stdoutFd.toFileHandle(write = false)
+    private val stderrHandle: KFileHandle? = stderrFd.toFileHandle(write = false)
+
+    // Output pipes are left open so remaining output can still be read; their streams release them at EOF or close.
     private fun cleanup() {
-        stdoutHandle?.close()
-        stderrHandle?.close()
         stdinHandle?.close()
     }
 
-    private fun checkState(block: Boolean = false) {
+    private fun checkState() {
         if (terminated) return
-        var options = 0
-        if (!block) {
-            options = options or WNOHANG
-        }
+        stateLock.withLock { checkStateLocked() }
+    }
+
+    private fun checkStateLocked() {
+        if (terminated) return
         memScoped {
             val info = alloc<siginfo_t>()
-            val res = waitid(idtype_t.P_PID, childPid.convert(), info.ptr, options or WEXITED)
+            val res = waitid(idtype_t.P_PID, childPid.convert(), info.ptr, WNOHANG or WEXITED)
             if (res == -1) {
                 // an error
                 throw ProcessException(
@@ -256,10 +274,14 @@ public actual class Process actual constructor(
         }
 
     public actual suspend fun waitFor(): Int {
-        while (!terminated) {
-            checkState(true)
+        // poll instead of blocking in waitid so callers' threads stay free and the wait stays cancellable
+        var pollDelay = 1.milliseconds
+        while (true) {
+            checkState()
+            if (terminated) return _exitStatus
+            delay(pollDelay)
+            pollDelay = (pollDelay * 2).coerceAtMost(POLLING_DELAY)
         }
-        return _exitStatus
     }
 
     public actual suspend fun waitFor(timeout: Duration): Int? {
@@ -267,7 +289,7 @@ public actual class Process actual constructor(
         // there is no good blocking solution, so use an active loop with sleep in between.
         val end = TimeSource.Monotonic.markNow() + timeout
         while (true) {
-            checkState(false)
+            checkState()
             // return if done or now passed the deadline
             if (terminated) return _exitStatus
             if (end.hasPassedNow()) return null
@@ -298,30 +320,11 @@ public actual class Process actual constructor(
         }
     }
 
-    private val stdinHandle: KFileHandle? by lazy {
-        if (stdinFd != -1) {
-            val fd = fdopen(stdinFd, "w") ?: throw PosixException.forErrno("fdopen")
-            UnixFileHandle(true, fd)
-        } else null
-    }
-    private val stdoutHandle: KFileHandle? by lazy {
-        if (stdoutFd != -1) {
-            val fd = fdopen(stdoutFd, "r") ?: throw PosixException.forErrno("fdopen")
-            UnixFileHandle(false, fd)
-        } else null
-    }
-    private val stderrHandle: KFileHandle? by lazy {
-        if (stderrFd != -1) {
-            val fd = fdopen(stderrFd, "r") ?: throw PosixException.forErrno("fdopen")
-            UnixFileHandle(false, fd)
-        } else null
-    }
+    public actual val stdin: Sink? by lazy { stdinHandle?.ownedSink() }
 
-    public actual val stdin: Sink? by lazy { stdinHandle?.sink() }
+    public actual val stdout: Source? by lazy { stdoutHandle?.ownedSource() }
 
-    public actual val stdout: Source? by lazy { stdoutHandle?.source() }
-
-    public actual val stderr: Source? by lazy { stderrHandle?.source() }
+    public actual val stderr: Source? by lazy { stderrHandle?.ownedSource() }
 
     public actual val stdoutLines: Flow<String>
         get() = stdout.lines()

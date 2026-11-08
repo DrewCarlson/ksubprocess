@@ -1,0 +1,244 @@
+package ksubprocess
+
+import kotlinx.cinterop.alloc
+import kotlinx.cinterop.memScoped
+import kotlinx.cinterop.ptr
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.joinAll
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
+import kotlinx.io.buffered
+import kotlinx.io.files.Path
+import kotlinx.io.files.SystemFileSystem
+import kotlinx.io.readString
+import platform.posix.F_GETFD
+import platform.posix.F_OK
+import platform.posix.O_RDONLY
+import platform.posix.access
+import platform.posix.close
+import platform.posix.closedir
+import platform.posix.dup
+import platform.posix.fcntl
+import platform.posix.open
+import platform.posix.opendir
+import platform.posix.readdir
+import platform.posix.stat
+import kotlin.concurrent.atomics.AtomicBoolean
+import kotlin.concurrent.atomics.AtomicInt
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
+import kotlin.concurrent.atomics.incrementAndFetch
+import kotlin.native.runtime.GC
+import kotlin.native.runtime.NativeRuntimeApi
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.seconds
+
+class DescriptorTests {
+
+    @OptIn(NativeRuntimeApi::class)
+    private fun openFdCount(): Int {
+        GC.collect()
+        val path = if (access("/proc/self/fd", F_OK) == 0) "/proc/self/fd" else "/dev/fd"
+        val dir = checkNotNull(opendir(path)) { "Cannot open $path" }
+        var count = 0
+        while (readdir(dir) != null) count++
+        closedir(dir)
+        return count
+    }
+
+    private fun assertNoFdGrowth(before: Int) {
+        val after = openFdCount()
+        assertTrue(after <= before + FD_SLACK, "Descriptors grew from $before to $after")
+    }
+
+    private fun shell(script: String, builder: ProcessArgumentBuilder.() -> Unit = {}) = Process {
+        arg("/bin/sh")
+        arg("-c")
+        arg(script)
+        builder()
+    }
+
+    @Test
+    fun communicateReleasesPipes() = runBlocking<Unit> {
+        repeat(5) { shell("true") { stdout = Redirect.Pipe; stderr = Redirect.Pipe }.communicate() }
+        val before = openFdCount()
+        repeat(100) {
+            val result = shell("cat > /dev/null; echo out; echo err >&2") {
+                stdin = Redirect.Pipe
+                stdout = Redirect.Pipe
+                stderr = Redirect.Pipe
+            }.communicate(input = "input")
+            assertEquals(CommunicateResult(0, "out\n", "err\n"), result)
+        }
+        assertNoFdGrowth(before)
+    }
+
+    @Test
+    fun streamsReadToEndButNotClosedAreReleased() = runBlocking<Unit> {
+        val before = openFdCount()
+        repeat(100) {
+            val proc = shell("echo out; echo err >&2") {
+                stdout = Redirect.Pipe
+                stderr = Redirect.Pipe
+            }
+            assertEquals("out\n", proc.stdout!!.readString())
+            assertEquals("err\n", proc.stderr!!.readString())
+            assertEquals(0, proc.waitFor())
+        }
+        assertNoFdGrowth(before)
+    }
+
+    @Test
+    fun unreadPipesAreReleasedWhenProcessIsCollected() = runBlocking<Unit> {
+        val before = openFdCount()
+        repeat(100) {
+            val proc = shell("echo out; echo err >&2") {
+                stdin = Redirect.Pipe
+                stdout = Redirect.Pipe
+                stderr = Redirect.Pipe
+            }
+            assertEquals(0, proc.waitFor())
+        }
+        assertNoFdGrowth(before)
+    }
+
+    @Test
+    fun outputIsReadableAfterExitIsObserved() = runBlocking<Unit> {
+        val proc = shell("echo out; echo err >&2") {
+            stdout = Redirect.Pipe
+            stderr = Redirect.Pipe
+        }
+        assertEquals(0, proc.waitFor())
+        assertFalse(proc.isAlive)
+        assertEquals(0, proc.exitCode)
+        assertEquals("out\n", proc.stdout!!.readString())
+        assertEquals("err\n", proc.stderr!!.readString())
+    }
+
+    @Test
+    fun cancellingCommunicateKillsAndReapsChild() = runBlocking<Unit> {
+        shell("true") { stdout = Redirect.Pipe; stderr = Redirect.Pipe }.communicate()
+        val before = openFdCount()
+        val proc = shell("exec sleep 30") {
+            stdin = Redirect.Pipe
+            stdout = Redirect.Pipe
+            stderr = Redirect.Pipe
+        }
+        val job = launch(Dispatchers.Default) { proc.communicate() }
+        delay(500)
+        withTimeout(10.seconds) { job.cancelAndJoin() }
+        assertFalse(proc.isAlive)
+        assertNotNull(proc.exitCode)
+        assertNoFdGrowth(before)
+    }
+
+    @OptIn(ExperimentalAtomicApi::class)
+    @Test
+    fun mergedStderrDoesNotCloseUnrelatedDescriptors() = runBlocking<Unit> {
+        val stop = AtomicBoolean(false)
+        val failures = AtomicInt(0)
+        val checkers = List(8) {
+            launch(Dispatchers.Default) {
+                val probe = open("/dev/null", O_RDONLY)
+                while (!stop.load()) {
+                    // grab whatever number is lowest, which is the one a double close would hit
+                    val fd = dup(probe)
+                    if (fcntl(fd, F_GETFD) == -1) failures.incrementAndFetch()
+                    close(fd)
+                }
+                close(probe)
+            }
+        }
+        try {
+            repeat(300) {
+                val result = shell("echo out; echo err >&2") {
+                    stdout = Redirect.Pipe
+                    stderr = Redirect.Stdout
+                }.communicate()
+                assertEquals(0, result.exitCode)
+            }
+        } finally {
+            stop.store(true)
+            checkers.joinAll()
+        }
+        assertEquals(0, failures.load(), "Descriptors owned by other threads were closed")
+    }
+
+    @Test
+    fun pipesAreNotInheritedByOtherChildren() = runBlocking<Unit> {
+        val holder = shell("exec sleep 30") { stdout = Redirect.Pipe }
+        try {
+            val fd = holder.stdoutFd
+            val result = shell("if [ -e /dev/fd/$fd ]; then echo leaked; else echo clean; fi") {
+                stdout = Redirect.Pipe
+            }.communicate()
+            assertEquals("clean\n", result.output)
+        } finally {
+            holder.kill()
+            holder.waitFor()
+            holder.stdout?.close()
+        }
+    }
+
+    @Test
+    fun redirectWriteCreatesPlainFile() = runBlocking<Unit> {
+        val path = Path("build", "redirect-mode.txt")
+        if (SystemFileSystem.exists(path)) SystemFileSystem.delete(path)
+        shell("echo hi") { stdout = Redirect.Write(path.toString()) }.waitFor()
+        val mode = memScoped {
+            val st = alloc<stat>()
+            check(stat(path.toString(), st.ptr) == 0)
+            st.st_mode.toInt()
+        }
+        SystemFileSystem.delete(path)
+        assertEquals(0, mode and "7000".toInt(8), "Special bits set: ${mode.toString(8)}")
+        assertEquals(0, mode and "111".toInt(8), "Execute bits set: ${mode.toString(8)}")
+    }
+
+    @Test
+    fun redirectWriteTruncatesOrAppends() = runBlocking<Unit> {
+        val path = Path("build", "redirect-append.txt")
+        shell("echo first-long-line") { stdout = Redirect.Write(path.toString()) }.waitFor()
+        shell("echo second") { stdout = Redirect.Write(path.toString()) }.waitFor()
+        shell("echo third") { stdout = Redirect.Write(path.toString(), append = true) }.waitFor()
+        val content = SystemFileSystem.source(path).buffered().use { it.readString() }
+        SystemFileSystem.delete(path)
+        assertEquals("second\nthird\n", content)
+    }
+
+    @Test
+    fun multiByteInputSurvivesSegmentBoundaries() = runBlocking<Unit> {
+        val input = "a\u00e4\u20ac\ud83d\ude00".repeat(5000)
+        val result = shell("cat") {
+            stdin = Redirect.Pipe
+            stdout = Redirect.Pipe
+        }.communicate(input = input)
+        assertEquals(input, result.output)
+    }
+
+    @Test
+    fun executableIsResolvedFromPath() = runBlocking<Unit> {
+        val result = Process {
+            arg("sh")
+            arg("-c")
+            arg("echo ok")
+            stdout = Redirect.Pipe
+        }.communicate()
+        assertEquals("ok\n", result.output)
+
+        assertFailsWith<ProcessException> {
+            Process { arg("ksubprocess-missing-executable") }
+        }
+    }
+
+    private companion object {
+        const val FD_SLACK = 3
+    }
+}

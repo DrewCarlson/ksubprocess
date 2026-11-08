@@ -62,10 +62,18 @@ constructor(args: ProcessArguments) {
     /** stdin pipe if requested. */
     public val stdin: Sink?
 
-    /** stdout pipe if requested. */
+    /**
+     * stdout pipe if requested.
+     *
+     * Output stays readable after the process exits. The pipe is released once the source is closed or read to the end.
+     */
     public val stdout: Source?
 
-    /** stderr pipe if requested. */
+    /**
+     * stderr pipe if requested.
+     *
+     * Output stays readable after the process exits. The pipe is released once the source is closed or read to the end.
+     */
     public val stderr: Source?
 
     /** stdout lines if requested. */
