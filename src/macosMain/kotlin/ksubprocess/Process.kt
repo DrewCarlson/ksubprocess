@@ -25,6 +25,7 @@ import platform.Foundation.*
 import platform.posix.*
 import kotlin.native.concurrent.*
 import kotlin.time.*
+import kotlin.time.Duration.Companion.milliseconds
 
 private fun Int.closeFd() {
     if (this != -1) close(this)
@@ -39,7 +40,7 @@ private data class RedirectFds(val readFd: Int, val writeFd: Int) {
 
 private fun Redirect.openFds(stream: String): RedirectFds = when (this) {
     Redirect.Null -> {
-        val fd = open("/dev/null", O_RDWR)
+        val fd = open("/dev/null", O_RDWR or O_CLOEXEC)
         if (fd == -1) {
             throw ProcessConfigException(
                 "Error opening null file for $stream",
@@ -60,25 +61,49 @@ private fun Redirect.openFds(stream: String): RedirectFds = when (this) {
                 PosixException.forErrno("pipe")
             )
         }
+        // macOS has no pipe2, so there is a short window where a concurrent fork can inherit these
+        fds.forEach { fcntl(it, F_SETFD, FD_CLOEXEC) }
         RedirectFds(fds[0], fds[1])
     }
     is Redirect.Read -> {
-        val handle = checkNotNull(NSFileHandle.fileHandleForReadingAtPath(file)) {
-            "Failed to create NSFileHandle for '$file'"
+        val fd = open(file, O_RDONLY or O_CLOEXEC)
+        if (fd == -1) {
+            throw ProcessConfigException(
+                "Error opening input file $file for $stream",
+                PosixException.forErrno("open")
+            )
         }
-        RedirectFds(handle.fileDescriptor, -1)
+        RedirectFds(fd, -1)
     }
     is Redirect.Write -> {
-        if (!NSFileManager.defaultManager.fileExistsAtPath(file)) {
-            NSFileManager.defaultManager.createFileAtPath(file, null, null)
+        val fd = open(
+            file,
+            if (append) O_WRONLY or O_APPEND or O_CREAT or O_CLOEXEC
+            else O_WRONLY or O_CREAT or O_TRUNC or O_CLOEXEC,
+            "666".toInt(8)
+        )
+        if (fd == -1) {
+            throw ProcessConfigException(
+                "Error opening output file $file for $stream",
+                PosixException.forErrno("open")
+            )
         }
-        val handle = checkNotNull(NSFileHandle.fileHandleForWritingAtPath(file)) {
-            "Failed to create NSFileHandle for '$file'"
-        }
-        RedirectFds(-1, handle.fileDescriptor)
+        RedirectFds(-1, fd)
     }
     Redirect.Stdout -> error("Redirect.Stdout must be handled separately.")
 }
+
+private fun findExecutable(name: String): String? =
+    Environment["PATH"]?.split(':')
+        ?.map { "$it/$name" }
+        ?.firstOrNull { access(it, F_OK or X_OK) == 0 }
+
+// The task only borrows the descriptor; it is closed explicitly after launch.
+private fun Int.toTaskHandle(): NSFileHandle? =
+    if (this == -1) null else NSFileHandle(fileDescriptor = this, closeOnDealloc = false)
+
+private fun Int.toFileHandle(write: Boolean): KFileHandle? =
+    if (this == -1) null else OkioNSFileHandle(write, NSFileHandle(fileDescriptor = this, closeOnDealloc = true))
 
 public actual class Process actual constructor(public actual val args: ProcessArguments) {
 
@@ -89,6 +114,17 @@ public actual class Process actual constructor(public actual val args: ProcessAr
     private val stdinFd: Int
 
     init {
+        var executable = args.arguments[0]
+        if ('/' !in executable) {
+            executable = findExecutable(executable)
+                ?: throw ProcessConfigException("Unable to find executable '$executable' on PATH")
+        }
+
+        args.workingDirectory?.let {
+            val dir = opendir(it) ?: throw ProcessConfigException("Working directory '$it' cannot be used!")
+            closedir(dir)
+        }
+
         var stdout: RedirectFds? = null
         var stderr: RedirectFds? = null
         var stdin: RedirectFds? = null
@@ -102,20 +138,29 @@ public actual class Process actual constructor(public actual val args: ProcessAr
             stdin = args.stdin.openFds("stdin")
             @Suppress("UNCHECKED_CAST")
             task.environment = args.environment as? Map<Any?, *>
-            task.setLaunchPath(args.arguments.firstOrNull())
+            task.executableURL = NSURL.fileURLWithPath(executable)
             task.arguments = args.arguments.drop(1)
-            task.standardOutput = NSFileHandle(stdout.writeFd, true)
-            task.standardInput = NSFileHandle(stdin.readFd, true)
-            task.standardError = NSFileHandle(stderr.writeFd, true)
-            args.workingDirectory?.run(task::setCurrentDirectoryPath)
-            task.launch()
+            stdout.writeFd.toTaskHandle()?.let { task.standardOutput = it }
+            stdin.readFd.toTaskHandle()?.let { task.standardInput = it }
+            stderr.writeFd.toTaskHandle()?.let { task.standardError = it }
+            args.workingDirectory?.let { task.currentDirectoryURL = NSURL.fileURLWithPath(it, isDirectory = true) }
+
+            // launchAndReturnError reports failures as NSError instead of raising an Objective-C exception
+            memScoped {
+                val error = alloc<ObjCObjectVar<NSError?>>()
+                if (!task.launchAndReturnError(error.ptr)) {
+                    throw ProcessException("Error starting subprocess: ${error.value?.localizedDescription}")
+                }
+            }
 
             stdoutFd = stdout.readFd
             stderrFd = stderr.readFd
             stdinFd = stdin.writeFd
 
             stdout.writeFd.closeFd()
-            stderr.writeFd.closeFd()
+            if (args.stderr != Redirect.Stdout) {
+                stderr.writeFd.closeFd()
+            }
             stdin.readFd.closeFd()
         } catch (e: Throwable) {
             stdout?.readFd?.closeFd()
@@ -137,7 +182,12 @@ public actual class Process actual constructor(public actual val args: ProcessAr
         get() = if (task.isRunning()) null else task.terminationStatus
 
     public actual suspend fun waitFor(): Int {
-        task.waitUntilExit()
+        // poll instead of waitUntilExit so callers' threads stay free and the wait stays cancellable
+        var pollDelay = 1.milliseconds
+        while (task.isRunning()) {
+            delay(pollDelay)
+            pollDelay = (pollDelay * 2).coerceAtMost(POLLING_DELAY)
+        }
         return task.terminationStatus
     }
 
@@ -153,25 +203,13 @@ public actual class Process actual constructor(public actual val args: ProcessAr
         }
     }
 
-    private val stdinHandle: KFileHandle? by lazy {
-        if (stdinFd != -1) {
-            OkioNSFileHandle(true, NSFileHandle(stdinFd, true))
-        } else null
-    }
-    private val stdoutHandle: KFileHandle? by lazy {
-        if (stdoutFd != -1) {
-            OkioNSFileHandle(false, NSFileHandle(stdoutFd, true))
-        } else null
-    }
-    private val stderrHandle: KFileHandle? by lazy {
-        if (stderrFd != -1) {
-            OkioNSFileHandle(false, NSFileHandle(stderrFd, true))
-        } else null
-    }
+    private val stdinHandle: KFileHandle? = stdinFd.toFileHandle(write = true)
+    private val stdoutHandle: KFileHandle? = stdoutFd.toFileHandle(write = false)
+    private val stderrHandle: KFileHandle? = stderrFd.toFileHandle(write = false)
 
-    public actual val stdin: Sink? by lazy { stdinHandle?.sink() }
-    public actual val stdout: Source? by lazy { stdoutHandle?.source() }
-    public actual val stderr: Source? by lazy { stderrHandle?.source() }
+    public actual val stdin: Sink? by lazy { stdinHandle?.ownedSink() }
+    public actual val stdout: Source? by lazy { stdoutHandle?.ownedSource() }
+    public actual val stderr: Source? by lazy { stderrHandle?.ownedSource() }
 
     public actual val stdoutLines: Flow<String>
         get() = stdout.lines()
@@ -184,7 +222,9 @@ public actual class Process actual constructor(public actual val args: ProcessAr
     }
 
     public actual fun kill() {
-        task.terminate()
+        if (task.isRunning()) {
+            kill(task.processIdentifier, SIGKILL)
+        }
     }
 
     public actual fun closeStdin() {
