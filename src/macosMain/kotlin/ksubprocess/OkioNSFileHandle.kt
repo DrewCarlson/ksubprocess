@@ -37,12 +37,8 @@ internal class OkioNSFileHandle(
     }
 
     override fun protectedWrite(fileOffset: Long, array: ByteArray, arrayOffset: Int, byteCount: Int) {
-        if (array.isEmpty()) return
-        val data = NSData.create(
-            data = array.sliceArray(
-                arrayOffset until arrayOffset + byteCount
-            ).toNSData()!!
-        )
+        if (byteCount == 0) return
+        val data = array.usePinned { NSData.dataWithBytes(it.addressOf(arrayOffset), byteCount.convert()) }
         file.writeData(data)
     }
 }
@@ -51,9 +47,4 @@ internal fun NSData.toByteArray(): ByteArray = ByteArray(this@toByteArray.length
     usePinned {
         memcpy(it.addressOf(0), this@toByteArray.bytes, this@toByteArray.length)
     }
-}
-
-internal fun ByteArray.toNSData(): NSData? = memScoped {
-    val string = NSString.create(string = decodeToString())
-    return string.dataUsingEncoding(NSUTF8StringEncoding)
 }
