@@ -6,6 +6,9 @@ package = ksubprocess.iop
 #endif
 #include <errno.h>
 #include <fcntl.h>
+#include <pthread.h>
+#include <signal.h>
+#include <time.h>
 #include <unistd.h>
 #include <stdio.h>
 
@@ -14,6 +17,27 @@ package = ksubprocess.iop
 
 static int pipe_cloexec(int* fds) {
     return pipe2(fds, O_CLOEXEC);
+}
+
+// write() that reports EPIPE without raising SIGPIPE, leaving the process-wide disposition untouched.
+static ssize_t write_no_sigpipe(int fd, const void* buf, size_t count) {
+    sigset_t pipe_set, pending, old;
+    sigemptyset(&pipe_set);
+    sigaddset(&pipe_set, SIGPIPE);
+    sigpending(&pending);
+    int was_pending = sigismember(&pending, SIGPIPE);
+
+    pthread_sigmask(SIG_BLOCK, &pipe_set, &old);
+    ssize_t res = write(fd, buf, count);
+    int err = errno;
+    if (res == -1 && err == EPIPE && !was_pending) {
+        // consume the SIGPIPE this write generated before unblocking
+        struct timespec zero = { 0, 0 };
+        while (sigtimedwait(&pipe_set, NULL, &zero) == -1 && errno == EINTR) {}
+    }
+    pthread_sigmask(SIG_SETMASK, &old, NULL);
+    errno = err;
+    return res;
 }
 
 // Move fd out of the stdio range so redirecting another stream cannot overwrite it.
@@ -43,6 +67,21 @@ static int redirect_fd(int fd, int target) {
     return 0;
 }
 
+// Stages reported through the error pipe when the child cannot run the program.
+#define KSP_STAGE_REDIRECT 1
+#define KSP_STAGE_CHDIR 2
+#define KSP_STAGE_EXEC 3
+
+// Tell the parent why the child failed. Only async-signal-safe calls are allowed after fork.
+static void report_failure(int err_fd, int stage) {
+    int msg[2] = { stage, errno };
+    ssize_t res;
+    do {
+        res = write(err_fd, msg, sizeof(msg));
+    } while (res == -1 && errno == EINTR);
+    _exit(127);
+}
+
 // Execute the process as specified. Assumes we are in the fork.
 static void run_in_fork(
         const char * executable,
@@ -51,38 +90,31 @@ static void run_in_fork(
         char *const* env,
         int stdout_fd,
         int stderr_fd,
-        int stdin_fd
+        int stdin_fd,
+        int err_fd
         ) {
+    if (lift_fd(&err_fd, -1) != 0) {
+        _exit(127);
+    }
     if (lift_fd(&stdout_fd, STDOUT_FILENO) != 0 ||
             lift_fd(&stderr_fd, STDERR_FILENO) != 0 ||
             lift_fd(&stdin_fd, STDIN_FILENO) != 0 ||
             redirect_fd(stdout_fd, STDOUT_FILENO) != 0 ||
             redirect_fd(stderr_fd, STDERR_FILENO) != 0 ||
             redirect_fd(stdin_fd, STDIN_FILENO) != 0) {
-        perror("Error redirecting standard streams");
-        _exit(1);
+        report_failure(err_fd, KSP_STAGE_REDIRECT);
     }
 
-    // change working directory
-    if (cd != NULL) {
-        // we assume this works
-        if (chdir(cd) != 0) {
-            perror("Error selecting working directory");
-            _exit(1);
-        }
+    if (cd != NULL && chdir(cd) != 0) {
+        report_failure(err_fd, KSP_STAGE_CHDIR);
     }
 
-    // execute process
-    int execres;
     if (env != NULL) {
-        execres = execve(executable, args, env);
+        execve(executable, args, env);
     } else {
-        execres = execv(executable, args);
+        execv(executable, args);
     }
-    if (execres != 0) {
-        perror("Process execution failed");
-        _exit(1);
-    }
+    report_failure(err_fd, KSP_STAGE_EXEC);
 }
 
 // fork and call run_in_fork
@@ -93,13 +125,43 @@ static pid_t fork_and_run(
         char *const* env,
         int stdout_fd,
         int stderr_fd,
-        int stdin_fd
+        int stdin_fd,
+        int err_fd
         ) {
     pid_t pid = fork();
     if (pid == 0) {
-        run_in_fork(executable, args, cd, env, stdout_fd, stderr_fd, stdin_fd);
+        run_in_fork(executable, args, cd, env, stdout_fd, stderr_fd, stdin_fd, err_fd);
     }
     return pid;
+}
+
+// Read the failure report written by the child. Returns 0 if exec succeeded, 1 if a report was read, -1 on error.
+static int read_failure(int err_fd, int* stage, int* error) {
+    int msg[2];
+    size_t total = 0;
+    while (total < sizeof(msg)) {
+        ssize_t res = read(err_fd, ((char*) msg) + total, sizeof(msg) - total);
+        if (res == -1) {
+            if (errno == EINTR) {
+                continue;
+            }
+            return -1;
+        }
+        if (res == 0) {
+            break;
+        }
+        total += res;
+    }
+    if (total == 0) {
+        return 0;
+    }
+    if (total != sizeof(msg)) {
+        errno = EIO;
+        return -1;
+    }
+    *stage = msg[0];
+    *error = msg[1];
+    return 1;
 }
 
 

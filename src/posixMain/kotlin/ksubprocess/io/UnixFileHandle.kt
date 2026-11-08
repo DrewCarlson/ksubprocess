@@ -17,6 +17,10 @@ package ksubprocess.io
 
 import kotlinx.atomicfu.atomic
 import kotlinx.cinterop.*
+import kotlinx.io.Buffer
+import kotlinx.io.RawSink
+import kotlinx.io.Sink
+import kotlinx.io.buffered
 import platform.posix.*
 import kotlin.experimental.ExperimentalNativeApi
 import kotlin.native.ref.createCleaner
@@ -52,21 +56,41 @@ internal class UnixFileHandle(
         arrayOffset: Int,
         byteCount: Int
     ): Int {
-        val canSeek = lseek(fileno(file), fileOffset, SEEK_SET) > -1
-        val bytesRead = if (array.isNotEmpty()) {
-            array.usePinned { pinned ->
-                if (canSeek) {
-                    pread(fileno(file), pinned.addressOf(arrayOffset), byteCount.convert(), fileOffset)
-                } else {
-                    read(fileno(file), pinned.addressOf(arrayOffset), byteCount.convert())
-                }
-            }.convert<Int>()
-        } else {
-            0
+        if (byteCount == 0) return 0
+        val fd = fileno(file)
+        val canSeek = lseek(fd, fileOffset, SEEK_SET) > -1
+        return array.usePinned { pinned ->
+            val target = pinned.addressOf(arrayOffset)
+            if (canSeek) {
+                val bytesRead = pread(fd, target, byteCount.convert(), fileOffset).toInt()
+                if (bytesRead == -1) throw PosixException.forErrno("pread")
+                if (bytesRead == 0) -1 else bytesRead
+            } else {
+                readPipe(fd, target, byteCount)
+            }
         }
-        if (bytesRead == -1) throw PosixException.forErrno("pread")
-        if (bytesRead == 0) return -1
-        return bytesRead
+    }
+
+    // Waits in short polls so a stop request is noticed while no data arrives.
+    private fun readPipe(fd: Int, target: CPointer<ByteVar>, byteCount: Int): Int {
+        memScoped {
+            val pfd = alloc<pollfd>()
+            pfd.fd = fd
+            pfd.events = POLLIN.toShort()
+            while (true) {
+                val stop = isStopRequested
+                val ready = poll(pfd.ptr, 1u, if (stop) 0 else STOP_CHECK_INTERVAL_MS)
+                if (ready > 0) break
+                if (ready == -1 && errno != EINTR) throw PosixException.forErrno("poll")
+                if (ready == 0 && stop) return -1
+            }
+        }
+        while (true) {
+            val bytesRead = read(fd, target, byteCount.convert()).toInt()
+            if (bytesRead > 0) return bytesRead
+            if (bytesRead == 0) return -1
+            if (errno != EINTR) throw PosixException.forErrno("read")
+        }
     }
 
     override fun protectedWrite(
@@ -75,19 +99,26 @@ internal class UnixFileHandle(
         arrayOffset: Int,
         byteCount: Int
     ) {
-        val canSeek = lseek(fileno(file), fileOffset, SEEK_SET) > -1
-        val bytesWritten = if (array.isNotEmpty()) {
-            array.usePinned { pinned ->
-                if (canSeek) {
-                    pwrite(fileno(file), pinned.addressOf(arrayOffset), byteCount.convert(), fileOffset)
+        if (byteCount == 0) return
+        val fd = fileno(file)
+        val canSeek = lseek(fd, fileOffset, SEEK_SET) > -1
+        array.usePinned { pinned ->
+            var written = 0
+            while (written < byteCount) {
+                val source = pinned.addressOf(arrayOffset + written)
+                val remaining = (byteCount - written).convert<size_t>()
+                val result = if (canSeek) {
+                    pwrite(fd, source, remaining, fileOffset + written)
                 } else {
-                    write(fileno(file), pinned.addressOf(arrayOffset), byteCount.convert())
+                    writePipe(fd, source, remaining)
+                }.toInt()
+                if (result == -1) {
+                    if (errno == EINTR) continue
+                    throw PosixException.forErrno("write")
                 }
-            }.convert<Int>()
-        } else {
-            0
+                written += result
+            }
         }
-        if (bytesWritten != byteCount) throw PosixException.forErrno("pwrite")
     }
 
     override fun protectedFlush() {
@@ -108,6 +139,28 @@ internal class UnixFileHandle(
         }
     }
 }
+
+private const val STOP_CHECK_INTERVAL_MS = 50
+
+/** write() for pipes that fails with EPIPE instead of raising SIGPIPE when the reader is gone. */
+internal expect fun writePipe(fd: Int, source: CPointer<ByteVar>, count: size_t): ssize_t
+
+internal fun Int.toFileHandle(write: Boolean): KFileHandle? {
+    if (this == -1) return null
+    val file = fdopen(this, if (write) "w" else "r") ?: throw PosixException.forErrno("fdopen")
+    return UnixFileHandle(write, file)
+}
+
+/** Stands in for the stdin pipe once it was closed because the process exited. */
+internal fun brokenPipeSink(): Sink = object : RawSink {
+    override fun write(source: Buffer, byteCount: Long) {
+        throw PosixException.forErrno("write", EPIPE)
+    }
+
+    override fun flush() {}
+
+    override fun close() {}
+}.buffered()
 
 private class FileRef(file: CPointer<FILE>) {
     private val ptr = atomic<CPointer<FILE>?>(file)

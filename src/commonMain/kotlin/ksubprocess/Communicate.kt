@@ -49,7 +49,10 @@ public data class CommunicateResult(
  * If stdin is a pipe, input will be written to it. Afterwards, stdin will be closed to signal end-of-input.
  *
  * If stdout or stderr are pipes, their output will be collected and returned on completion. The pipes will be closed
- * on termination. The pipe collection runs in background threads to avoid buffer overflows in the pipe.
+ * on termination. The pipe collection runs in background threads to avoid buffer overflows in the pipe. Collection
+ * ends when the process exits: output written later by processes it left running in the background is not waited for.
+ *
+ * If the process exits or closes stdin before reading all of [input], the rest of the input is discarded.
  *
  * If a timeout is set, the child will be [terminated][Process.terminate] if it doesn't finish soon enough. An extra
  * timeout for graceful termination can be set, afterwards the child will be [killed][Process.kill]. The kill timeout
@@ -84,8 +87,14 @@ public suspend fun Process.communicate(
 
             try {
                 // push out the input data
-                stdin?.writeString(input)
-                closeStdin()
+                try {
+                    stdin?.writeString(input)
+                    closeStdin()
+                } catch (e: Exception) {
+                    // the child exited or closed stdin before reading all input
+                    if (!e.isBrokenPipe()) throw e
+                    runCatching { closeStdin() }
+                }
 
                 // wait with timeout if needed
                 if (timeout != null && waitFor(timeout) == null) {
@@ -107,6 +116,9 @@ public suspend fun Process.communicate(
                 // wait for the process to actually die
                 val exitCode = waitFor()
 
+                // everything the child wrote is in the pipes now; don't wait for processes it left running
+                drainOutput()
+
                 CommunicateResult(
                     exitCode,
                     stdoutCollector?.await().orEmpty(),
@@ -120,6 +132,7 @@ public suspend fun Process.communicate(
                         runCatching { kill() }
                         waitFor()
                     }
+                    drainOutput()
                 }
                 throw e
             }

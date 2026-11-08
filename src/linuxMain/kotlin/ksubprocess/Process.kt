@@ -24,11 +24,17 @@ import kotlinx.io.Sink
 import kotlinx.io.Source
 import ksubprocess.io.KFileHandle
 import ksubprocess.io.PosixException
-import ksubprocess.io.UnixFileHandle
+import ksubprocess.io.brokenPipeSink
+import ksubprocess.io.toFileHandle
+import ksubprocess.iop.KSP_STAGE_CHDIR
+import ksubprocess.iop.KSP_STAGE_REDIRECT
 import ksubprocess.iop.fork_and_run
 import ksubprocess.iop.pipe_cloexec
+import ksubprocess.iop.read_failure
 import platform.posix.*
 import kotlin.concurrent.Volatile
+import kotlin.experimental.ExperimentalNativeApi
+import kotlin.native.ref.createCleaner
 import kotlin.time.*
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -107,10 +113,33 @@ private fun Redirect.openFds(stream: String): RedirectFds = when (this) {
     Redirect.Stdout -> throw IllegalStateException("Redirect.Stdout must be handled separately.")
 }
 
-private fun Int.toFileHandle(write: Boolean): KFileHandle? {
-    if (this == -1) return null
-    val file = fdopen(this, if (write) "w" else "r") ?: throw PosixException.forErrno("fdopen")
-    return UnixFileHandle(write, file)
+// Reaping state shared with a cleaner, so a dropped Process does not leave a zombie behind.
+private class Child(val pid: pid_t) {
+    val lock = reentrantLock()
+    var reaped = false
+
+    fun abandon() {
+        lock.withLock {
+            if (!reaped) AbandonedChildren.add(pid)
+        }
+    }
+}
+
+// Children whose Process was collected before their exit was observed.
+private object AbandonedChildren {
+    private val lock = reentrantLock()
+    private val pids = mutableListOf<pid_t>()
+
+    fun add(pid: pid_t) {
+        lock.withLock { pids += pid }
+        reap()
+    }
+
+    fun reap() {
+        lock.withLock {
+            if (pids.isNotEmpty()) pids.removeAll { waitpid(it, null, WNOHANG) != 0 }
+        }
+    }
 }
 
 private fun MemScope.toCStrVector(data: List<String>): CArrayPointer<CPointerVar<ByteVar>> {
@@ -130,13 +159,10 @@ public actual class Process actual constructor(
     @Volatile
     private var terminated = false
 
-    // serializes waitid so the child is reaped exactly once
-    private val stateLock = reentrantLock()
-
     // exit status - only valid once terminated = true
     private var _exitStatus = -1
 
-    private val childPid: pid_t
+    private val child: Child
 
     // file descriptors for child pipes
     internal val stdoutFd: Int
@@ -144,6 +170,8 @@ public actual class Process actual constructor(
     private val stdinFd: Int
 
     init {
+        AbandonedChildren.reap()
+
         // find executable
         var executable = args.arguments[0]
 
@@ -164,6 +192,7 @@ public actual class Process actual constructor(
         var stdout: RedirectFds? = null
         var stderr: RedirectFds? = null
         var stdin: RedirectFds? = null
+        var status: RedirectFds? = null
         try {
             // init redirects
             stdout = args.stdout.openFds("stdout")
@@ -174,6 +203,8 @@ public actual class Process actual constructor(
                 args.stderr.openFds("stderr")
             }
             stdin = args.stdin.openFds("stdin")
+            // the child reports exec failures here, a successful exec closes it
+            status = Redirect.Pipe.openFds("exec status")
 
             val pid = memScoped {
                 // convert c lists
@@ -188,6 +219,7 @@ public actual class Process actual constructor(
                     stdout_fd = stdout.writeFd,
                     stderr_fd = stderr.writeFd,
                     stdin_fd = stdin.readFd,
+                    err_fd = status.writeFd,
                 )
             }
             if (pid == -1) {
@@ -197,7 +229,10 @@ public actual class Process actual constructor(
                     PosixException.forErrno("fork")
                 )
             }
-            childPid = pid
+            status.writeFd.closeFd()
+            status = status.copy(writeFd = -1)
+            checkLaunched(pid, status.readFd, executable)
+            child = Child(pid)
 
             // store file descriptors
             stdoutFd = stdout.readFd
@@ -221,6 +256,43 @@ public actual class Process actual constructor(
             stdin?.readFd?.closeFd()
             stdin?.writeFd?.closeFd()
             throw t
+        } finally {
+            status?.readFd?.closeFd()
+            status?.writeFd?.closeFd()
+        }
+    }
+
+    @OptIn(ExperimentalNativeApi::class)
+    @Suppress("unused")
+    private val cleaner = createCleaner(child) { it.abandon() }
+
+    private fun checkLaunched(pid: pid_t, statusFd: Int, executable: String) {
+        val (result, stage, error) = memScoped {
+            val stage = alloc<IntVar>()
+            val error = alloc<IntVar>()
+            Triple(read_failure(statusFd, stage.ptr, error.ptr), stage.value, error.value)
+        }
+        if (result == 0) return
+        val readError = errno
+        if (result == -1) kill(pid, SIGKILL)
+        waitpid(pid, null, 0)
+        throw when {
+            result == -1 -> ProcessException(
+                "Error starting subprocess",
+                PosixException.forErrno("read", readError)
+            )
+            stage == KSP_STAGE_CHDIR -> ProcessConfigException(
+                "Working directory '${args.workingDirectory}' cannot be used!",
+                PosixException.forErrno("chdir", error)
+            )
+            stage == KSP_STAGE_REDIRECT -> ProcessException(
+                "Error redirecting standard streams",
+                PosixException.forErrno("dup2", error)
+            )
+            else -> ProcessConfigException(
+                "Error executing '$executable'",
+                PosixException.forErrno("execv", error)
+            )
         }
     }
 
@@ -235,14 +307,14 @@ public actual class Process actual constructor(
 
     private fun checkState() {
         if (terminated) return
-        stateLock.withLock { checkStateLocked() }
+        child.lock.withLock { checkStateLocked() }
     }
 
     private fun checkStateLocked() {
         if (terminated) return
         memScoped {
             val info = alloc<siginfo_t>()
-            val res = waitid(idtype_t.P_PID, childPid.convert(), info.ptr, WNOHANG or WEXITED)
+            val res = waitid(idtype_t.P_PID, child.pid.convert(), info.ptr, WNOHANG or WEXITED)
             if (res == -1) {
                 // an error
                 throw ProcessException(
@@ -253,6 +325,7 @@ public actual class Process actual constructor(
             when (info.si_code) {
                 CLD_EXITED, CLD_KILLED, CLD_DUMPED -> {
                     // process has terminated
+                    child.reaped = true
                     terminated = true
                     _exitStatus = info.exitCode
                     cleanup()
@@ -311,16 +384,19 @@ public actual class Process actual constructor(
      * @param signal signal number
      */
     public fun sendSignal(signal: Int) {
-        if (terminated) return
-        if (kill(childPid, signal) != 0) {
-            throw ProcessException(
-                "Error terminating process",
-                PosixException.forErrno("kill")
-            )
+        // hold the lock so the pid cannot be reaped and reused by another process meanwhile
+        child.lock.withLock {
+            if (terminated) return
+            if (kill(child.pid, signal) != 0) {
+                throw ProcessException(
+                    "Error terminating process",
+                    PosixException.forErrno("kill")
+                )
+            }
         }
     }
 
-    public actual val stdin: Sink? by lazy { stdinHandle?.ownedSink() }
+    public actual val stdin: Sink? by lazy { stdinHandle?.let { it.ownedSinkOrNull() ?: brokenPipeSink() } }
 
     public actual val stdout: Source? by lazy { stdoutHandle?.ownedSource() }
 
@@ -335,5 +411,10 @@ public actual class Process actual constructor(
     public actual fun closeStdin() {
         stdin?.close()
         stdinHandle?.close()
+    }
+
+    internal actual fun drainOutput() {
+        stdoutHandle?.stopAfterAvailable()
+        stderrHandle?.stopAfterAvailable()
     }
 }

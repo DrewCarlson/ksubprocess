@@ -138,4 +138,7 @@ public actual class Process actual constructor(public actual val args: ProcessAr
     public actual fun closeStdin() {
         stdin?.close()
     }
+
+    // the JDK already drains the pipes and ends the streams once the process exits
+    internal actual fun drainOutput() {}
 }

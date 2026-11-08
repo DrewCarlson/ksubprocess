@@ -11,6 +11,7 @@ import kotlinx.io.Source
 import kotlinx.io.UnsafeIoApi
 import kotlinx.io.buffered
 import kotlinx.io.unsafe.UnsafeBufferOperations
+import kotlin.concurrent.Volatile
 
 /**
  * Minimal internal cross-platform file/pipe handle abstraction.
@@ -21,6 +22,16 @@ internal abstract class KFileHandle(
 ) : AutoCloseable {
     private var closed: Boolean = false
     private var openStreamCount = 0
+
+    @Volatile
+    private var stopRequested = false
+
+    /**
+     * True once [stopAfterAvailable] was called. Implementations reading from pipes then return data that is
+     * already available and report end of stream instead of waiting for more.
+     */
+    protected val isStopRequested: Boolean
+        get() = stopRequested
 
     private val lock = reentrantLock()
 
@@ -51,8 +62,21 @@ internal abstract class KFileHandle(
     /** Returns a source that takes ownership of this handle: closing the source closes the handle. */
     fun ownedSource(): Source = source().also { close() }
 
-    /** Returns a sink that takes ownership of this handle: closing the sink closes the handle. */
-    fun ownedSink(): Sink = sink().also { close() }
+    /** Like [ownedSource] for writing, or null if the handle is already closed. */
+    fun ownedSinkOrNull(): Sink? {
+        check(readWrite) { "file handle is read-only" }
+        lock.withLock {
+            if (closed) return null
+            openStreamCount++
+            closed = true
+        }
+        return FileHandleSink(this, 0L).buffered()
+    }
+
+    /** Stop waiting for data that is not available yet; see [isStopRequested]. */
+    fun stopAfterAvailable() {
+        stopRequested = true
+    }
 
     /** Close this handle. It is safe to call multiple times. */
     override fun close() {

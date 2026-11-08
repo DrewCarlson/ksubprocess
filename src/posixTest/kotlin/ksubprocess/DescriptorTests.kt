@@ -244,6 +244,80 @@ class DescriptorTests {
     }
 
     @Test
+    fun communicateReturnsWhenChildExitsWhileBackgroundProcessHoldsPipes() = runBlocking<Unit> {
+        val (result, elapsed) = measureTimedValue {
+            shell("sleep 30 & echo out; echo err >&2") {
+                stdout = Redirect.Pipe
+                stderr = Redirect.Pipe
+            }.communicate()
+        }
+        assertEquals(CommunicateResult(0, "out\n", "err\n"), result)
+        assertTrue(elapsed < 10.seconds, "communicate took $elapsed")
+    }
+
+    @Test
+    fun communicateKeepsAllOutputWrittenBeforeExit() = runBlocking<Unit> {
+        repeat(10) {
+            val result = shell("head -c 1000000 /dev/zero | tr '\\0' a; printf end") {
+                stdout = Redirect.Pipe
+                stderr = Redirect.Stdout
+            }.communicate()
+            assertEquals(1_000_003, result.output.length)
+            assertTrue(result.output.endsWith("aend"))
+        }
+    }
+
+    @Test
+    fun cancellingCommunicateReturnsWhileBackgroundProcessHoldsPipes() = runBlocking<Unit> {
+        val proc = shell("sleep 30 & exec sleep 30") {
+            stdout = Redirect.Pipe
+            stderr = Redirect.Pipe
+        }
+        val job = launch(Dispatchers.Default) { proc.communicate() }
+        delay(500)
+        withTimeout(10.seconds) { job.cancelAndJoin() }
+        assertFalse(proc.isAlive)
+    }
+
+    @Test
+    fun communicateIgnoresChildNotReadingInput() = runBlocking<Unit> {
+        val input = "x".repeat(1_000_000)
+        repeat(20) {
+            val result = shell("exit 3") {
+                stdin = Redirect.Pipe
+                stdout = Redirect.Pipe
+            }.communicate(input = input)
+            assertEquals(CommunicateResult(3, "", ""), result)
+        }
+    }
+
+    @Test
+    fun stdinAfterExitBehavesAsBrokenPipe() = runBlocking<Unit> {
+        val proc = shell("echo done") {
+            stdin = Redirect.Pipe
+            stdout = Redirect.Pipe
+        }
+        assertEquals(0, proc.waitFor())
+        assertEquals(CommunicateResult(0, "done\n", ""), proc.communicate(input = "ignored"))
+    }
+
+    @Test
+    fun failedExecThrows() {
+        assertFailsWith<ProcessException> {
+            Process { arg("/nonexistent/ksubprocess-missing-executable") }
+        }
+        assertFailsWith<ProcessException> {
+            Process { arg("/dev/null") }
+        }
+        assertFailsWith<ProcessException> {
+            Process {
+                arg("/bin/sh")
+                workingDirectory = "/nonexistent/ksubprocess-missing-directory"
+            }
+        }
+    }
+
+    @Test
     fun executableIsResolvedFromPath() = runBlocking<Unit> {
         val result = Process {
             arg("sh")

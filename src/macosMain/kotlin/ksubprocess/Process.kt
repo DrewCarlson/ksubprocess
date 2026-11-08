@@ -102,9 +102,6 @@ private fun findExecutable(name: String): String? =
 private fun Int.toTaskHandle(): NSFileHandle? =
     if (this == -1) null else NSFileHandle(fileDescriptor = this, closeOnDealloc = false)
 
-private fun Int.toFileHandle(write: Boolean): KFileHandle? =
-    if (this == -1) null else OkioNSFileHandle(write, NSFileHandle(fileDescriptor = this, closeOnDealloc = true))
-
 public actual class Process actual constructor(public actual val args: ProcessArguments) {
 
     private val task = NSTask()
@@ -136,6 +133,8 @@ public actual class Process actual constructor(public actual val args: ProcessAr
                 args.stderr.openFds("stderr")
             }
             stdin = args.stdin.openFds("stdin")
+            // report EPIPE instead of raising SIGPIPE when the child stops reading
+            if (stdin.writeFd != -1) fcntl(stdin.writeFd, F_SETNOSIGPIPE, 1)
             @Suppress("UNCHECKED_CAST")
             task.environment = args.environment as? Map<Any?, *>
             task.executableURL = NSURL.fileURLWithPath(executable)
@@ -207,7 +206,7 @@ public actual class Process actual constructor(public actual val args: ProcessAr
     private val stdoutHandle: KFileHandle? = stdoutFd.toFileHandle(write = false)
     private val stderrHandle: KFileHandle? = stderrFd.toFileHandle(write = false)
 
-    public actual val stdin: Sink? by lazy { stdinHandle?.ownedSink() }
+    public actual val stdin: Sink? by lazy { stdinHandle?.let { it.ownedSinkOrNull() ?: brokenPipeSink() } }
     public actual val stdout: Source? by lazy { stdoutHandle?.ownedSource() }
     public actual val stderr: Source? by lazy { stderrHandle?.ownedSource() }
 
@@ -230,5 +229,10 @@ public actual class Process actual constructor(public actual val args: ProcessAr
     public actual fun closeStdin() {
         stdin?.close()
         stdinHandle?.close()
+    }
+
+    internal actual fun drainOutput() {
+        stdoutHandle?.stopAfterAvailable()
+        stderrHandle?.stopAfterAvailable()
     }
 }

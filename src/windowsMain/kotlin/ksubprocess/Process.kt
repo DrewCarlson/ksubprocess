@@ -15,15 +15,25 @@
  */
 package ksubprocess
 
+import kotlinx.atomicfu.atomic
+import kotlinx.atomicfu.locks.reentrantLock
+import kotlinx.atomicfu.locks.withLock
 import kotlinx.cinterop.*
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.io.Sink
 import kotlinx.io.Source
+import cnames.structs._PROC_THREAD_ATTRIBUTE_LIST
 import ksubprocess.io.KFileHandle
 import ksubprocess.io.WindowsException
 import ksubprocess.io.WindowsFileHandle
+import ksubprocess.io.brokenPipeSink
 import platform.windows.*
+import kotlin.concurrent.Volatile
+import kotlin.experimental.ExperimentalNativeApi
+import kotlin.native.ref.createCleaner
 import kotlin.time.*
+import kotlin.time.Duration.Companion.milliseconds
 
 // read and write fds for a pipe. Also used to store other fds for convenience.
 private data class RedirectFds(val readFd: HANDLE?, val writeFd: HANDLE?) {
@@ -62,7 +72,20 @@ private fun Redirect.openFds(stream: String): RedirectFds = when (this) {
         RedirectFds(fd, stream == "stdin")
     }
 
-    Redirect.Inherit -> RedirectFds.EMPTY
+    Redirect.Inherit -> {
+        // pass an inheritable duplicate so the child can be given an explicit handle list
+        val stdId = when (stream) {
+            "stdin" -> STD_INPUT_HANDLE
+            "stdout" -> STD_OUTPUT_HANDLE
+            else -> STD_ERROR_HANDLE
+        }
+        val std = GetStdHandle(stdId.convert())
+        if (std == null || std == INVALID_HANDLE_VALUE) {
+            RedirectFds.EMPTY
+        } else {
+            RedirectFds(std.duplicateInheritable(stream), stream == "stdin")
+        }
+    }
     Redirect.Pipe -> memScoped {
         // open a pipe
         val hReadPipe = alloc<HANDLEVar>()
@@ -144,9 +167,38 @@ private fun Redirect.openFds(stream: String): RedirectFds = when (this) {
     Redirect.Stdout -> error("Redirect.Stdout must be handled separately.")
 }
 
+private fun HANDLE.duplicateInheritable(stream: String): HANDLE? = memScoped {
+    val target = alloc<HANDLEVar>()
+    val process = GetCurrentProcess()
+    if (DuplicateHandle(process, this@duplicateInheritable, process, target.ptr, 0u, TRUE, DUPLICATE_SAME_ACCESS.convert()) == 0) {
+        throw ProcessConfigException(
+            "Error inheriting $stream",
+            WindowsException.fromLastError(functionName = "DuplicateHandle")
+        )
+    }
+    target.value
+}
+
+private fun HANDLE?.isValid(): Boolean = this != null && this != INVALID_HANDLE_VALUE
+
+private fun HANDLE?.toFileHandle(write: Boolean): KFileHandle? =
+    if (isValid()) WindowsFileHandle(write, this) else null
+
+// Closes the process handle if the Process is dropped before its exit was observed.
+private class ProcessHandleRef(handle: HANDLE) {
+    private val ref = atomic<HANDLE?>(handle)
+
+    val handle: HANDLE?
+        get() = ref.value
+
+    fun close() {
+        ref.getAndSet(null)?.close(ignoreErrors = true)
+    }
+}
+
 public actual class Process actual constructor(public actual val args: ProcessArguments) {
 
-    private val childProcessHandle: HANDLE
+    private val processRef: ProcessHandleRef
 
     // file descriptors for child pipes
     internal val stdoutFd: HANDLE?
@@ -168,7 +220,7 @@ public actual class Process actual constructor(public actual val args: ProcessAr
             stdin = args.stdin.openFds("stdin")
 
             // create child process in mem scope
-            childProcessHandle = memScoped {
+            val childProcessHandle = memScoped {
                 // convert command line
                 val cmdLine = args.arguments.joinToString(" ") { arg ->
                     val quoteArg = arg // .replace("\"", "^\"") TODO find generic solution
@@ -200,39 +252,77 @@ public actual class Process actual constructor(public actual val args: ProcessAr
 
                 // create process handle receiver
                 val procInfo = alloc<PROCESS_INFORMATION>()
-                // populate startupinfo
-                val startInfo = alloc<STARTUPINFOW> {
-                    cb = sizeOf<STARTUPINFOW>().convert()
-                    hStdError = stderr.writeFd
-                    hStdOutput = stdout.writeFd
-                    hStdInput = stdin.readFd
-                    dwFlags = dwFlags or STARTF_USESTDHANDLES.convert()
-                }
 
-                // start the process
-                val createSuccess = CreateProcessW(
-                    lpApplicationName = null, // lpApplicationName
-                    lpCommandLine = cmdLine.wcstr.ptr, // command line
-                    lpProcessAttributes = null, // process security attributes
-                    lpThreadAttributes = null, // primary thread security attributes
-                    bInheritHandles = TRUE, // handles are inherited
-                    dwCreationFlags = CREATE_UNICODE_ENVIRONMENT.convert(), // creation flags
-                    lpEnvironment = envBlock, // use environment
-                    lpCurrentDirectory = args.workingDirectory, // use current directory if any (null auto propagation)
-                    lpStartupInfo = startInfo.ptr, // STARTUPINFO pointer
-                    lpProcessInformation = procInfo.ptr, // receives PROCESS_INFORMATION
-                )
-                if (createSuccess == 0) {
+                // only let the child inherit its own standard handles, not those of concurrently started children
+                val inherited = listOf(stdin.readFd, stdout.writeFd, stderr.writeFd).filter { it.isValid() }.distinct()
+                val attributeListSize = alloc<SIZE_TVar>()
+                InitializeProcThreadAttributeList(null, 1u, 0u, attributeListSize.ptr)
+                val attributeList = allocArray<ByteVar>(attributeListSize.value.toLong())
+                    .reinterpret<_PROC_THREAD_ATTRIBUTE_LIST>()
+                if (InitializeProcThreadAttributeList(attributeList, 1u, 0u, attributeListSize.ptr) == 0) {
                     throw ProcessException(
-                        "Error staring subprocess",
-                        WindowsException.fromLastError(functionName = "CreateProcessW")
+                        "Error starting subprocess",
+                        WindowsException.fromLastError(functionName = "InitializeProcThreadAttributeList")
                     )
+                }
+                try {
+                    val handleList = allocArray<HANDLEVar>(inherited.size.coerceAtLeast(1))
+                    inherited.forEachIndexed { i, handle -> handleList[i] = handle }
+                    if (inherited.isNotEmpty() &&
+                        UpdateProcThreadAttribute(
+                            attributeList,
+                            0u,
+                            PROC_THREAD_ATTRIBUTE_HANDLE_LIST.convert(),
+                            handleList,
+                            (sizeOf<HANDLEVar>() * inherited.size).convert(),
+                            null,
+                            null
+                        ) == 0
+                    ) {
+                        throw ProcessException(
+                            "Error starting subprocess",
+                            WindowsException.fromLastError(functionName = "UpdateProcThreadAttribute")
+                        )
+                    }
+
+                    // populate startupinfo
+                    val startInfo = alloc<STARTUPINFOEXW>()
+                    startInfo.StartupInfo.cb = sizeOf<STARTUPINFOEXW>().convert()
+                    startInfo.StartupInfo.hStdError = stderr.writeFd
+                    startInfo.StartupInfo.hStdOutput = stdout.writeFd
+                    startInfo.StartupInfo.hStdInput = stdin.readFd
+                    startInfo.StartupInfo.dwFlags = STARTF_USESTDHANDLES.convert()
+                    startInfo.lpAttributeList = attributeList
+
+                    // start the process
+                    val createSuccess = CreateProcessW(
+                        lpApplicationName = null, // lpApplicationName
+                        lpCommandLine = cmdLine.wcstr.ptr, // command line
+                        lpProcessAttributes = null, // process security attributes
+                        lpThreadAttributes = null, // primary thread security attributes
+                        bInheritHandles = if (inherited.isEmpty()) FALSE else TRUE,
+                        dwCreationFlags = (CREATE_UNICODE_ENVIRONMENT or EXTENDED_STARTUPINFO_PRESENT).convert(),
+                        lpEnvironment = envBlock, // use environment
+                        lpCurrentDirectory = args.workingDirectory, // use current directory if any (null auto propagation)
+                        lpStartupInfo = startInfo.StartupInfo.ptr, // STARTUPINFO pointer
+                        lpProcessInformation = procInfo.ptr, // receives PROCESS_INFORMATION
+                    )
+                    if (createSuccess == 0) {
+                        throw ProcessException(
+                            "Error staring subprocess",
+                            WindowsException.fromLastError(functionName = "CreateProcessW")
+                        )
+                    }
+                } finally {
+                    DeleteProcThreadAttributeList(attributeList)
                 }
                 // close thread handle - we don't use it
                 procInfo.hThread?.close()
                 // pass process handle to childProcessHandle field
                 procInfo.hProcess!!
             }
+
+            processRef = ProcessHandleRef(childProcessHandle)
 
             // wait for the process to initialize
             WaitForInputIdle(childProcessHandle, INFINITE)
@@ -242,9 +332,11 @@ public actual class Process actual constructor(public actual val args: ProcessAr
             stderrFd = stderr.readFd
             stdinFd = stdin.writeFd
 
-            // close unused fds (don't need to watch stderr=stdout here)
+            // close unused fds, stderr shares the stdout handle when merged
             stdout.writeFd.close(ignoreErrors = true)
-            stderr.writeFd.close(ignoreErrors = true)
+            if (args.stderr != Redirect.Stdout) {
+                stderr.writeFd.close(ignoreErrors = true)
+            }
             stdin.readFd.close(ignoreErrors = true)
         } catch (e: Exception) {
             // cleanup handles
@@ -261,19 +353,17 @@ public actual class Process actual constructor(public actual val args: ProcessAr
         }
     }
 
-    private val stdinHandle: KFileHandle? by lazy {
-        if (stdinFd == null) null else WindowsFileHandle(true, stdinFd)
-    }
-    private val stdoutHandle: KFileHandle? by lazy {
-        if (stdoutFd == null) null else WindowsFileHandle(false, stdoutFd)
-    }
-    private val stderrHandle: KFileHandle? by lazy {
-        if (stderrFd == null) null else WindowsFileHandle(false, stderrFd)
-    }
+    @OptIn(ExperimentalNativeApi::class)
+    @Suppress("unused")
+    private val cleaner = createCleaner(processRef) { it.close() }
 
-    public actual val stdin: Sink? by lazy { stdinHandle?.sink() }
-    public actual val stdout: Source? by lazy { stdoutHandle?.source() }
-    public actual val stderr: Source? by lazy { stderrHandle?.source() }
+    private val stdinHandle: KFileHandle? = stdinFd.toFileHandle(write = true)
+    private val stdoutHandle: KFileHandle? = stdoutFd.toFileHandle(write = false)
+    private val stderrHandle: KFileHandle? = stderrFd.toFileHandle(write = false)
+
+    public actual val stdin: Sink? by lazy { stdinHandle?.let { it.ownedSinkOrNull() ?: brokenPipeSink() } }
+    public actual val stdout: Source? by lazy { stdoutHandle?.ownedSource() }
+    public actual val stderr: Source? by lazy { stderrHandle?.ownedSource() }
 
     public actual val stdoutLines: Flow<String>
         get() = stdout.lines()
@@ -281,67 +371,72 @@ public actual class Process actual constructor(public actual val args: ProcessAr
     public actual val stderrLines: Flow<String>
         get() = stderr.lines()
 
-    // close handles when done!
+    // Output pipes are left open so remaining output can still be read; their streams release them at EOF or close.
     private fun cleanup() {
-        childProcessHandle.close(ignoreErrors = true)
+        processRef.close()
         stdinHandle?.close()
-        stdoutHandle?.close()
-        stderrHandle?.close()
     }
 
+    // guards the process handle, which is closed once the exit is observed
+    private val stateLock = reentrantLock()
+
+    @Volatile
     private var _exitCode: Int? = null
+
     public actual val exitCode: Int?
         get() {
-            if (_exitCode == null) {
-                // query process
+            _exitCode?.let { return it }
+            stateLock.withLock {
+                if (_exitCode != null) return _exitCode
+                val handle = processRef.handle ?: return _exitCode
+                if (WaitForSingleObject(handle, 0u) != WAIT_OBJECT_0) return null
                 memScoped {
                     val ecVar = alloc<DWORDVar>()
-                    if (GetExitCodeProcess(childProcessHandle, ecVar.ptr) == 0) {
+                    if (GetExitCodeProcess(handle, ecVar.ptr) == 0) {
                         throw ProcessException(
                             "Error querying subprocess state",
                             WindowsException.fromLastError(functionName = "GetExitCodeProcess")
                         )
-                    } else if (ecVar.value != STILL_ACTIVE) {
-                        cleanup()
-                        _exitCode = ecVar.value.convert()
                     }
+                    _exitCode = ecVar.value.toInt()
                 }
+                cleanup()
+                return _exitCode
             }
-            return _exitCode
         }
 
     public actual val isAlive: Boolean
         get() = exitCode == null
 
     public actual suspend fun waitFor(): Int {
-        return when (WaitForSingleObject(childProcessHandle, INFINITE)) {
-            WAIT_FAILED -> throw ProcessException(
-                "Error waiting for subprocess",
-                WindowsException.fromLastError(functionName = "TerminateProcess")
-            )
-
-            else -> checkNotNull(exitCode) { "Waited for process, but it's still alive!" }
+        // poll instead of blocking so callers' threads stay free and the wait stays cancellable
+        var pollDelay = 1.milliseconds
+        while (true) {
+            exitCode?.let { return it }
+            delay(pollDelay)
+            pollDelay = (pollDelay * 2).coerceAtMost(POLLING_DELAY)
         }
     }
 
     public actual suspend fun waitFor(timeout: Duration): Int? {
-        return when (WaitForSingleObject(childProcessHandle, timeout.inWholeMilliseconds.convert())) {
-            WAIT_FAILED -> throw ProcessException(
-                "Error waiting for child process",
-                WindowsException.fromLastError(functionName = "TerminateProcess")
-            )
-
-            WAIT_TIMEOUT.convert<DWORD>() -> null // still alive
-            else -> exitCode // terminated
+        require(timeout.isPositive()) { "Timeout must be positive!" }
+        val end = TimeSource.Monotonic.markNow() + timeout
+        while (true) {
+            exitCode?.let { return it }
+            if (end.hasPassedNow()) return null
+            delay(POLLING_DELAY)
         }
     }
 
     public actual fun terminate() {
-        if (TerminateProcess(childProcessHandle, 1u) == 0) {
-            throw ProcessException(
-                "Error terminating child process",
-                WindowsException.fromLastError(functionName = "TerminateProcess")
-            )
+        stateLock.withLock {
+            if (exitCode != null) return
+            if (TerminateProcess(processRef.handle, 1u) == 0) {
+                throw ProcessException(
+                    "Error terminating child process",
+                    WindowsException.fromLastError(functionName = "TerminateProcess")
+                )
+            }
         }
     }
 
@@ -353,5 +448,10 @@ public actual class Process actual constructor(public actual val args: ProcessAr
     public actual fun closeStdin() {
         stdin?.close()
         stdinHandle?.close()
+    }
+
+    internal actual fun drainOutput() {
+        stdoutHandle?.stopAfterAvailable()
+        stderrHandle?.stopAfterAvailable()
     }
 }

@@ -15,15 +15,35 @@
  */
 package ksubprocess.io
 
+import kotlinx.atomicfu.atomic
 import kotlinx.cinterop.*
+import kotlinx.io.Buffer
 import kotlinx.io.IOException
+import kotlinx.io.RawSink
+import kotlinx.io.Sink
+import kotlinx.io.buffered
 import ksubprocess.close
 import platform.windows.*
+import kotlin.experimental.ExperimentalNativeApi
+import kotlin.native.ref.createCleaner
 
 internal class WindowsFileHandle(
     readWrite: Boolean,
-    private val file: HANDLE?
+    file: HANDLE?
 ) : KFileHandle(readWrite) {
+
+    private val ref = HandleRef(file)
+
+    // closes the handle if it becomes unreachable without being closed
+    @OptIn(ExperimentalNativeApi::class)
+    @Suppress("unused")
+    private val cleaner = createCleaner(ref) { it.close(ignoreErrors = true) }
+
+    private val file: HANDLE?
+        get() = ref.handle
+
+    private val isPipe = GetFileType(file) == FILE_TYPE_PIPE.convert<DWORD>()
+
     override fun protectedSize(): Long {
         memScoped {
             val result = alloc<LARGE_INTEGER>()
@@ -35,15 +55,36 @@ internal class WindowsFileHandle(
     }
 
     override fun protectedRead(fileOffset: Long, array: ByteArray, arrayOffset: Int, byteCount: Int): Int {
-        val bytesRead = if (array.isNotEmpty()) {
-            array.usePinned { pinned ->
-                read(pinned.addressOf(arrayOffset), fileOffset, byteCount).toInt()
-            }
-        } else {
-            0
+        if (byteCount == 0) return 0
+        val toRead = if (isPipe) awaitPipeData(byteCount) else byteCount
+        if (toRead <= 0) return -1
+        val bytesRead = array.usePinned { pinned ->
+            read(pinned.addressOf(arrayOffset), fileOffset, toRead).toInt()
         }
         if (bytesRead == 0) return -1
         return bytesRead
+    }
+
+    // Returns how many bytes can be read without blocking, or -1 at EOF or once a stop was requested.
+    private fun awaitPipeData(byteCount: Int): Int {
+        memScoped {
+            val available = alloc<DWORDVar>()
+            var pause = 1
+            while (true) {
+                if (PeekNamedPipe(file, null, 0u, null, available.ptr, null) == 0) {
+                    val ec = GetLastError()
+                    if (ec.toInt() == ERROR_BROKEN_PIPE) return -1
+                    throw IOException(
+                        "IO operation failed due to windows error",
+                        WindowsException.fromLastError(ec, functionName = "PeekNamedPipe")
+                    )
+                }
+                if (available.value > 0u) return minOf(byteCount.toUInt(), available.value).toInt()
+                if (isStopRequested) return -1
+                Sleep(pause.convert())
+                pause = minOf(pause * 2, MAX_PIPE_PAUSE_MS)
+            }
+        }
     }
 
     override fun protectedWrite(fileOffset: Long, array: ByteArray, arrayOffset: Int, byteCount: Int) {
@@ -83,7 +124,7 @@ internal class WindowsFileHandle(
     }
 
     override fun protectedClose() {
-        file.close()
+        ref.close()
     }
 
     private fun LARGE_INTEGER.toLong(): Long {
@@ -143,3 +184,30 @@ internal class WindowsFileHandle(
         }
     }
 }
+
+private const val MAX_PIPE_PAUSE_MS = 50
+
+private class HandleRef(handle: HANDLE?) {
+    private val ref = atomic(handle)
+
+    val handle: HANDLE?
+        get() = ref.value
+
+    fun close(ignoreErrors: Boolean = false) {
+        ref.getAndSet(INVALID_HANDLE_VALUE).close(ignoreErrors)
+    }
+}
+
+/** Stands in for the stdin pipe once it was closed because the process exited. */
+internal fun brokenPipeSink(): Sink = object : RawSink {
+    override fun write(source: Buffer, byteCount: Long) {
+        throw IOException(
+            "IO operation failed due to windows error",
+            WindowsException(ERROR_NO_DATA.convert(), "The pipe is being closed.")
+        )
+    }
+
+    override fun flush() {}
+
+    override fun close() {}
+}.buffered()

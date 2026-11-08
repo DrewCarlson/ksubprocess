@@ -100,6 +100,9 @@ constructor(args: ProcessArguments) {
      * Close stdin handles and free resources to allow process to complete.
      */
     public fun closeStdin()
+
+    /** Let pending reads of the output pipes finish with the data already available instead of waiting for EOF. */
+    internal fun drainOutput()
 }
 
 /**
