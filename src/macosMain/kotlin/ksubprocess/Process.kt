@@ -177,8 +177,16 @@ public actual class Process actual constructor(public actual val args: ProcessAr
     public actual val isAlive: Boolean
         get() = task.isRunning()
 
+    // report signals like the JVM and shells do: 128 + signal number
+    private val terminationCode: Int
+        get() = if (task.terminationReason == NSTaskTerminationReasonUncaughtSignal) {
+            128 + task.terminationStatus
+        } else {
+            task.terminationStatus
+        }
+
     public actual val exitCode: Int?
-        get() = if (task.isRunning()) null else task.terminationStatus
+        get() = if (task.isRunning()) null else terminationCode
 
     public actual suspend fun waitFor(): Int {
         // poll instead of waitUntilExit so callers' threads stay free and the wait stays cancellable
@@ -187,7 +195,7 @@ public actual class Process actual constructor(public actual val args: ProcessAr
             delay(pollDelay)
             pollDelay = (pollDelay * 2).coerceAtMost(POLLING_DELAY)
         }
-        return task.terminationStatus
+        return terminationCode
     }
 
     public actual suspend fun waitFor(timeout: Duration): Int? {
@@ -196,7 +204,7 @@ public actual class Process actual constructor(public actual val args: ProcessAr
         val end = TimeSource.Monotonic.markNow() + timeout
         while (true) {
             // return if done or now passed the deadline
-            if (!task.isRunning()) return task.terminationStatus
+            if (!task.isRunning()) return terminationCode
             if (end.hasPassedNow()) return null
             delay(POLLING_DELAY)
         }

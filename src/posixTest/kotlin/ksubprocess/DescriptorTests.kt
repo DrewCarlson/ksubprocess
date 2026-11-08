@@ -318,6 +318,20 @@ class DescriptorTests {
     }
 
     @Test
+    fun signalTerminationReportsShellStyleExitCode() = runBlocking<Unit> {
+        assertEquals(137, shell("kill -9 $$").waitFor())
+        assertEquals(42, shell("exit 42").waitFor())
+
+        val killed = shell("exec sleep 30")
+        killed.kill()
+        assertEquals(137, killed.waitFor())
+
+        val terminated = shell("exec sleep 30")
+        terminated.terminate()
+        assertEquals(143, terminated.waitFor())
+    }
+
+    @Test
     fun executableIsResolvedFromPath() = runBlocking<Unit> {
         val result = Process {
             arg("sh")

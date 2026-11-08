@@ -327,7 +327,8 @@ public actual class Process actual constructor(
                     // process has terminated
                     child.reaped = true
                     terminated = true
-                    _exitStatus = info.exitCode
+                    // report signals like the JVM and shells do: 128 + signal number
+                    _exitStatus = if (info.si_code == CLD_EXITED) info.exitCode else 128 + info.exitCode
                     cleanup()
                 }
             }

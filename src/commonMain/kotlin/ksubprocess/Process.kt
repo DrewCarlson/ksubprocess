@@ -42,12 +42,17 @@ constructor(args: ProcessArguments) {
     /** Check if the process is still running. */
     public val isAlive: Boolean
 
-    /** Exit code of terminated process, or `null` if the process is still running. */
+    /**
+     * Exit code of terminated process, or `null` if the process is still running.
+     *
+     * On Linux and macOS, a process terminated by a signal reports 128 plus the signal number (137 for SIGKILL), as
+     * on the JVM and in shells. On Windows, [terminate] and [kill] make the process exit with code 1.
+     */
     public val exitCode: Int?
 
     /**
      * Wait for the process to terminate.
-     * @return exit code
+     * @return exit code, see [exitCode]
      */
     public suspend fun waitFor(): Int
 

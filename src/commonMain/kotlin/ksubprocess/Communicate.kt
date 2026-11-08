@@ -23,7 +23,7 @@ import kotlin.time.*
 /**
  * Result tuple of Process.communicate().
  *
- * @param exitCode process exit code. Is 0 if the process terminated normally
+ * @param exitCode process exit code. Is 0 if the process terminated normally, see [Process.exitCode]
  * @param output stdout pipe output, or empty if stdout wasn't a pipe
  * @param errors stderr pipe output, or empty if stderr wasn't a pipe
  */
