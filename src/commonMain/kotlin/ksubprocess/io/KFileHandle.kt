@@ -161,8 +161,8 @@ internal abstract class KFileHandle(
         if (byteCount == 0L) return 0L
 
         var result = -1
-        UnsafeBufferOperations.writeToTail(sink, 1) { data: ByteArray, offset: Int, length: Int ->
-            result = protectedRead(fileOffset, data, offset, minOf(byteCount, length.toLong()).toInt())
+        UnsafeBufferOperations.writeToTail(sink, 1) { data: ByteArray, startIndex: Int, endIndex: Int ->
+            result = protectedRead(fileOffset, data, startIndex, minOf(byteCount, (endIndex - startIndex).toLong()).toInt())
             if (result == -1) 0 else result
         }
         return result.toLong()
@@ -175,10 +175,10 @@ internal abstract class KFileHandle(
         val targetOffset = fileOffset + byteCount
 
         while (currentOffset < targetOffset) {
-            val consumed = UnsafeBufferOperations.readFromHead(source) { data, offset, length ->
-                val toWrite = minOf((targetOffset - currentOffset).toInt(), length)
+            val consumed = UnsafeBufferOperations.readFromHead(source) { data, startIndex, endIndex ->
+                val toWrite = minOf(targetOffset - currentOffset, (endIndex - startIndex).toLong()).toInt()
                 if (toWrite <= 0) return@readFromHead 0
-                protectedWrite(currentOffset, data, offset, toWrite)
+                protectedWrite(currentOffset, data, startIndex, toWrite)
                 toWrite
             }
             if (consumed <= 0) break

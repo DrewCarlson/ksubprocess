@@ -13,10 +13,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
+import kotlinx.io.Buffer
 import kotlinx.io.buffered
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import kotlinx.io.readString
+import kotlinx.io.writeString
 import platform.posix.F_GETFD
 import platform.posix.F_OK
 import platform.posix.O_RDONLY
@@ -25,6 +27,7 @@ import platform.posix.close
 import platform.posix.closedir
 import platform.posix.dup
 import platform.posix.fcntl
+import platform.posix.fstat
 import platform.posix.open
 import platform.posix.opendir
 import platform.posix.readdir
@@ -180,10 +183,19 @@ class DescriptorTests {
         val holder = shell("exec sleep 30") { stdout = Redirect.Pipe }
         try {
             val fd = holder.stdoutFd
-            val result = shell("if [ -e /dev/fd/$fd ]; then echo leaked; else echo clean; fi") {
+            val inode = memScoped {
+                val st = alloc<stat>()
+                check(fstat(fd, st.ptr) == 0)
+                st.st_ino
+            }
+            // Linux names the pipe; elsewhere any open descriptor with that number counts as a leak.
+            // Emulators such as Rosetta keep their own descriptors open in every process.
+            val result = shell(
+                "readlink /dev/fd/$fd 2>/dev/null || { [ -e /dev/fd/$fd ] && echo open; } || echo closed"
+            ) {
                 stdout = Redirect.Pipe
             }.communicate()
-            assertEquals("clean\n", result.output)
+            assertTrue(result.output.trim() !in setOf("pipe:[$inode]", "open"), "Pipe leaked: ${result.output}")
         } finally {
             holder.kill()
             holder.waitFor()
@@ -241,6 +253,34 @@ class DescriptorTests {
             stdout = Redirect.Pipe
         }.communicate(input = input)
         assertEquals(input, result.output)
+    }
+
+    @Test
+    fun readIntoPartiallyFilledSegmentStaysInBounds() = runBlocking<Unit> {
+        val proc = shell("printf abc; sleep 1; head -c 20000 /dev/zero | tr '\\0' b") { stdout = Redirect.Pipe }
+        val stdout = proc.stdout!!
+        // keep "abc" buffered so the next read lands in the middle of a segment
+        stdout.require(3)
+        val output = stdout.readString()
+        proc.waitFor()
+        assertEquals("abc" + "b".repeat(20000), output)
+    }
+
+    @Test
+    fun writeFromPartiallyConsumedSegmentSendsExactBytes() = runBlocking<Unit> {
+        val proc = shell("cat") {
+            stdin = Redirect.Pipe
+            stdout = Redirect.Pipe
+        }
+        val expected = (0 until 20000).map { 'a' + it % 26 }.joinToString("")
+        val buffer = Buffer().apply { writeString("x$expected") }
+        buffer.readByte()
+        val stdin = proc.stdin!!
+        stdin.write(buffer, buffer.size)
+        stdin.flush()
+        proc.closeStdin()
+        assertEquals(expected, proc.stdout!!.readString())
+        proc.waitFor()
     }
 
     @Test
