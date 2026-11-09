@@ -73,17 +73,12 @@ internal class UnixFileHandle(
 
     // Waits in short polls so a stop request is noticed while no data arrives.
     private fun readPipe(fd: Int, target: CPointer<ByteVar>, byteCount: Int): Int {
-        memScoped {
-            val pfd = alloc<pollfd>()
-            pfd.fd = fd
-            pfd.events = POLLIN.toShort()
-            while (true) {
-                val stop = isStopRequested
-                val ready = poll(pfd.ptr, 1u, if (stop) 0 else STOP_CHECK_INTERVAL_MS)
-                if (ready > 0) break
-                if (ready == -1 && errno != EINTR) throw PosixException.forErrno("poll")
-                if (ready == 0 && stop) return -1
-            }
+        while (true) {
+            val stop = isStopRequested
+            val ready = pollReadable(fd, if (stop) 0 else STOP_CHECK_INTERVAL_MS)
+            if (ready > 0) break
+            if (ready == -1 && errno != EINTR) throw PosixException.forErrno("poll")
+            if (ready == 0 && stop) return -1
         }
         while (true) {
             val bytesRead = read(fd, target, byteCount.convert()).toInt()
@@ -106,12 +101,12 @@ internal class UnixFileHandle(
             var written = 0
             while (written < byteCount) {
                 val source = pinned.addressOf(arrayOffset + written)
-                val remaining = (byteCount - written).convert<size_t>()
+                val remaining = byteCount - written
                 val result = if (canSeek) {
-                    pwrite(fd, source, remaining, fileOffset + written)
+                    pwrite(fd, source, remaining.convert(), fileOffset + written).toInt()
                 } else {
                     writePipe(fd, source, remaining)
-                }.toInt()
+                }
                 if (result == -1) {
                     if (errno == EINTR) continue
                     throw PosixException.forErrno("write")
@@ -143,7 +138,10 @@ internal class UnixFileHandle(
 private const val STOP_CHECK_INTERVAL_MS = 50
 
 /** write() for pipes that fails with EPIPE instead of raising SIGPIPE when the reader is gone. */
-internal expect fun writePipe(fd: Int, source: CPointer<ByteVar>, count: size_t): ssize_t
+internal expect fun writePipe(fd: Int, source: CPointer<ByteVar>, count: Int): Int
+
+/** poll() for POLLIN on a single descriptor. */
+internal expect fun pollReadable(fd: Int, timeoutMs: Int): Int
 
 internal fun Int.toFileHandle(write: Boolean): KFileHandle? {
     if (this == -1) return null
