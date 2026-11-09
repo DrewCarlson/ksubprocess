@@ -43,9 +43,11 @@ kotlin {
             languageSettings.apply {
                 optIn("kotlinx.coroutines.ExperimentalCoroutinesApi")
                 optIn("kotlin.time.ExperimentalTime")
-                optIn("kotlinx.cinterop.ExperimentalForeignApi")
-                optIn("kotlinx.cinterop.BetaInteropApi")
             }
+        }
+        matching { !it.name.startsWith("common") && !it.name.startsWith("jvm") }.configureEach {
+            languageSettings.optIn("kotlinx.cinterop.ExperimentalForeignApi")
+            languageSettings.optIn("kotlinx.cinterop.BetaInteropApi")
         }
         commonMain {
             dependencies {
@@ -62,7 +64,7 @@ kotlin {
             }
         }
 
-        val posixMain by creating {
+        val posixMain = create("posixMain") {
             dependsOn(commonMain.get())
         }
 
@@ -74,7 +76,7 @@ kotlin {
             dependsOn(posixMain)
         }
 
-        val posixTest by creating {
+        val posixTest = create("posixTest") {
             dependsOn(commonTest.get())
         }
 
