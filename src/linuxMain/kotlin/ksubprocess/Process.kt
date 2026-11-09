@@ -15,8 +15,6 @@
  */
 package ksubprocess
 
-import kotlinx.atomicfu.locks.reentrantLock
-import kotlinx.atomicfu.locks.withLock
 import kotlinx.cinterop.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -115,7 +113,7 @@ private fun Redirect.openFds(stream: String): RedirectFds = when (this) {
 
 // Reaping state shared with a cleaner, so a dropped Process does not leave a zombie behind.
 private class Child(val pid: pid_t) {
-    val lock = reentrantLock()
+    val lock = NativeLock()
     var reaped = false
 
     fun abandon() {
@@ -127,7 +125,7 @@ private class Child(val pid: pid_t) {
 
 // Children whose Process was collected before their exit was observed.
 private object AbandonedChildren {
-    private val lock = reentrantLock()
+    private val lock = NativeLock()
     private val pids = mutableListOf<pid_t>()
 
     fun add(pid: pid_t) {

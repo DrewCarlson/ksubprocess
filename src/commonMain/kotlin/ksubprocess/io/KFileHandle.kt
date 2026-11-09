@@ -1,7 +1,5 @@
 package ksubprocess.io
 
-import kotlinx.atomicfu.locks.reentrantLock
-import kotlinx.atomicfu.locks.withLock
 import kotlinx.io.Buffer
 import kotlinx.io.IOException
 import kotlinx.io.RawSink
@@ -12,6 +10,7 @@ import kotlinx.io.UnsafeIoApi
 import kotlinx.io.buffered
 import kotlinx.io.unsafe.UnsafeBufferOperations
 import kotlin.concurrent.Volatile
+import kotlin.concurrent.atomics.AtomicInt
 
 /**
  * Minimal internal cross-platform file/pipe handle abstraction.
@@ -20,8 +19,8 @@ import kotlin.concurrent.Volatile
 internal abstract class KFileHandle(
     private val readWrite: Boolean,
 ) : AutoCloseable {
-    private var closed: Boolean = false
-    private var openStreamCount = 0
+    // bit 0: the handle was closed, remaining bits: number of open streams
+    private val state = AtomicInt(0)
 
     @Volatile
     private var stopRequested = false
@@ -33,18 +32,13 @@ internal abstract class KFileHandle(
     protected val isStopRequested: Boolean
         get() = stopRequested
 
-    private val lock = reentrantLock()
-
     /**
      * Returns a source that reads from this starting at [fileOffset]. The returned source must be
      * closed when it is no longer needed.
      */
     @Throws(IOException::class)
     fun source(fileOffset: Long = 0L): Source {
-        lock.withLock {
-            check(!closed) { "closed" }
-            openStreamCount++
-        }
+        openStream(markClosed = false)
         return FileHandleSource(this, fileOffset).buffered()
     }
 
@@ -52,10 +46,7 @@ internal abstract class KFileHandle(
     @Throws(IOException::class)
     fun sink(fileOffset: Long = 0L): Sink {
         check(readWrite) { "file handle is read-only" }
-        lock.withLock {
-            check(!closed) { "closed" }
-            openStreamCount++
-        }
+        openStream(markClosed = false)
         return FileHandleSink(this, fileOffset).buffered()
     }
 
@@ -65,11 +56,7 @@ internal abstract class KFileHandle(
     /** Like [ownedSource] for writing, or null if the handle is already closed. */
     fun ownedSinkOrNull(): Sink? {
         check(readWrite) { "file handle is read-only" }
-        lock.withLock {
-            if (closed) return null
-            openStreamCount++
-            closed = true
-        }
+        if (!openStream(markClosed = true)) return null
         return FileHandleSink(this, 0L).buffered()
     }
 
@@ -80,12 +67,33 @@ internal abstract class KFileHandle(
 
     /** Close this handle. It is safe to call multiple times. */
     override fun close() {
-        lock.withLock {
-            if (closed) return
-            closed = true
-            if (openStreamCount != 0) return
+        while (true) {
+            val current = state.load()
+            if (current and CLOSED != 0) return
+            if (state.compareAndSet(current, current or CLOSED)) {
+                if (current == 0) protectedClose()
+                return
+            }
         }
-        protectedClose()
+    }
+
+    // Registers a stream, optionally closing the handle at the same time. With markClosed it returns false
+    // instead of failing if the handle is already closed.
+    private fun openStream(markClosed: Boolean): Boolean {
+        while (true) {
+            val current = state.load()
+            if (current and CLOSED != 0) {
+                check(markClosed) { "closed" }
+                return false
+            }
+            val next = (current + STREAM) or (if (markClosed) CLOSED else 0)
+            if (state.compareAndSet(current, next)) return true
+        }
+    }
+
+    // Closes the underlying handle once the last stream is gone from a closed handle.
+    private fun releaseStream() {
+        if (state.addAndFetch(-STREAM) == CLOSED) protectedClose()
     }
 
     /** Flush any buffered data to the underlying handle. */
@@ -139,9 +147,7 @@ internal abstract class KFileHandle(
     protected abstract fun protectedWrite(fileOffset: Long, array: ByteArray, arrayOffset: Int, byteCount: Int)
 
     private fun checkOpen() {
-        lock.withLock {
-            check(!closed) { "closed" }
-        }
+        check(state.load() and CLOSED == 0) { "closed" }
     }
 
     private fun checkWriteAllowed() {
@@ -215,11 +221,7 @@ internal abstract class KFileHandle(
         private fun release() {
             if (released) return
             released = true
-            fileHandle.lock.withLock {
-                fileHandle.openStreamCount--
-                if (fileHandle.openStreamCount != 0 || !fileHandle.closed) return
-            }
-            fileHandle.protectedClose()
+            fileHandle.releaseStream()
         }
     }
 
@@ -243,14 +245,13 @@ internal abstract class KFileHandle(
         override fun close() {
             if (closed) return
             closed = true
-            fileHandle.lock.withLock {
-                fileHandle.openStreamCount--
-                if (fileHandle.openStreamCount != 0 || !fileHandle.closed) return@close
-            }
-            fileHandle.protectedClose()
+            fileHandle.releaseStream()
         }
     }
 }
+
+private const val CLOSED = 1
+private const val STREAM = 2
 
 private class ArrayIndexOutOfBoundsException(
     override val message: String?

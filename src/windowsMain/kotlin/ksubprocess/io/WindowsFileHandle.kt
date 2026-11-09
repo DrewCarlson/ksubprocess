@@ -15,7 +15,6 @@
  */
 package ksubprocess.io
 
-import kotlinx.atomicfu.atomic
 import kotlinx.cinterop.*
 import kotlinx.io.Buffer
 import kotlinx.io.IOException
@@ -24,6 +23,7 @@ import kotlinx.io.Sink
 import kotlinx.io.buffered
 import ksubprocess.close
 import platform.windows.*
+import kotlin.concurrent.atomics.AtomicReference
 import kotlin.experimental.ExperimentalNativeApi
 import kotlin.native.ref.createCleaner
 
@@ -188,13 +188,13 @@ internal class WindowsFileHandle(
 private const val MAX_PIPE_PAUSE_MS = 50
 
 private class HandleRef(handle: HANDLE?) {
-    private val ref = atomic(handle)
+    private val ref = AtomicReference(handle)
 
     val handle: HANDLE?
-        get() = ref.value
+        get() = ref.load()
 
     fun close(ignoreErrors: Boolean = false) {
-        ref.getAndSet(INVALID_HANDLE_VALUE).close(ignoreErrors)
+        ref.exchange(INVALID_HANDLE_VALUE).close(ignoreErrors)
     }
 }
 

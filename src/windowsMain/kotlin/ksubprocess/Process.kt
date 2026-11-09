@@ -15,9 +15,6 @@
  */
 package ksubprocess
 
-import kotlinx.atomicfu.atomic
-import kotlinx.atomicfu.locks.reentrantLock
-import kotlinx.atomicfu.locks.withLock
 import kotlinx.cinterop.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -30,6 +27,7 @@ import ksubprocess.io.WindowsFileHandle
 import ksubprocess.io.brokenPipeSink
 import platform.windows.*
 import kotlin.concurrent.Volatile
+import kotlin.concurrent.atomics.AtomicReference
 import kotlin.experimental.ExperimentalNativeApi
 import kotlin.native.ref.createCleaner
 import kotlin.time.*
@@ -186,13 +184,13 @@ private fun HANDLE?.toFileHandle(write: Boolean): KFileHandle? =
 
 // Closes the process handle if the Process is dropped before its exit was observed.
 private class ProcessHandleRef(handle: HANDLE) {
-    private val ref = atomic<HANDLE?>(handle)
+    private val ref = AtomicReference<HANDLE?>(handle)
 
     val handle: HANDLE?
-        get() = ref.value
+        get() = ref.load()
 
     fun close() {
-        ref.getAndSet(null)?.close(ignoreErrors = true)
+        ref.exchange(null)?.close(ignoreErrors = true)
     }
 }
 
@@ -378,7 +376,7 @@ public actual class Process actual constructor(public actual val args: ProcessAr
     }
 
     // guards the process handle, which is closed once the exit is observed
-    private val stateLock = reentrantLock()
+    private val stateLock = NativeLock()
 
     @Volatile
     private var _exitCode: Int? = null
@@ -386,24 +384,26 @@ public actual class Process actual constructor(public actual val args: ProcessAr
     public actual val exitCode: Int?
         get() {
             _exitCode?.let { return it }
-            stateLock.withLock {
-                if (_exitCode != null) return _exitCode
-                val handle = processRef.handle ?: return _exitCode
-                if (WaitForSingleObject(handle, 0u) != WAIT_OBJECT_0) return null
-                memScoped {
-                    val ecVar = alloc<DWORDVar>()
-                    if (GetExitCodeProcess(handle, ecVar.ptr) == 0) {
-                        throw ProcessException(
-                            "Error querying subprocess state",
-                            WindowsException.fromLastError(functionName = "GetExitCodeProcess")
-                        )
-                    }
-                    _exitCode = ecVar.value.toInt()
-                }
-                cleanup()
-                return _exitCode
-            }
+            return stateLock.withLock { exitCodeLocked() }
         }
+
+    private fun exitCodeLocked(): Int? {
+        if (_exitCode != null) return _exitCode
+        val handle = processRef.handle ?: return _exitCode
+        if (WaitForSingleObject(handle, 0u) != WAIT_OBJECT_0) return null
+        memScoped {
+            val ecVar = alloc<DWORDVar>()
+            if (GetExitCodeProcess(handle, ecVar.ptr) == 0) {
+                throw ProcessException(
+                    "Error querying subprocess state",
+                    WindowsException.fromLastError(functionName = "GetExitCodeProcess")
+                )
+            }
+            _exitCode = ecVar.value.toInt()
+        }
+        cleanup()
+        return _exitCode
+    }
 
     public actual val isAlive: Boolean
         get() = exitCode == null
@@ -430,7 +430,7 @@ public actual class Process actual constructor(public actual val args: ProcessAr
 
     public actual fun terminate() {
         stateLock.withLock {
-            if (exitCode != null) return
+            if (exitCodeLocked() != null) return
             if (TerminateProcess(processRef.handle, 1u) == 0) {
                 throw ProcessException(
                     "Error terminating child process",

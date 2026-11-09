@@ -15,13 +15,13 @@
  */
 package ksubprocess.io
 
-import kotlinx.atomicfu.atomic
 import kotlinx.cinterop.*
 import kotlinx.io.Buffer
 import kotlinx.io.RawSink
 import kotlinx.io.Sink
 import kotlinx.io.buffered
 import platform.posix.*
+import kotlin.concurrent.atomics.AtomicReference
 import kotlin.experimental.ExperimentalNativeApi
 import kotlin.native.ref.createCleaner
 
@@ -161,10 +161,10 @@ internal fun brokenPipeSink(): Sink = object : RawSink {
 }.buffered()
 
 private class FileRef(file: CPointer<FILE>) {
-    private val ptr = atomic<CPointer<FILE>?>(file)
+    private val ptr = AtomicReference<CPointer<FILE>?>(file)
 
     val file: CPointer<FILE>
-        get() = checkNotNull(ptr.value) { "closed" }
+        get() = checkNotNull(ptr.load()) { "closed" }
 
-    fun close(): Int = ptr.getAndSet(null)?.let { fclose(it) } ?: 0
+    fun close(): Int = ptr.exchange(null)?.let { fclose(it) } ?: 0
 }

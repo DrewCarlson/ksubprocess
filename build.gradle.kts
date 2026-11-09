@@ -4,7 +4,6 @@ plugins {
     alias(libs.plugins.spotless)
     //alias(libs.plugins.completeKotlin)
     alias(libs.plugins.mavenPublish)
-    alias(libs.plugins.atomicfu)
 }
 
 repositories {
@@ -42,6 +41,7 @@ kotlin {
             languageSettings.apply {
                 optIn("kotlinx.coroutines.ExperimentalCoroutinesApi")
                 optIn("kotlin.time.ExperimentalTime")
+                optIn("kotlin.concurrent.atomics.ExperimentalAtomicApi")
             }
         }
         matching { !it.name.startsWith("common") && !it.name.startsWith("jvm") }.configureEach {
@@ -64,7 +64,7 @@ kotlin {
         }
 
         val posixMain = create("posixMain") {
-            dependsOn(commonMain.get())
+            dependsOn(nativeMain.get())
         }
 
         linuxMain {
@@ -76,7 +76,7 @@ kotlin {
         }
 
         val posixTest = create("posixTest") {
-            dependsOn(commonTest.get())
+            dependsOn(nativeTest.get())
         }
 
         linuxTest {
