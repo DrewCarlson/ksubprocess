@@ -44,6 +44,7 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.measureTimedValue
 
@@ -139,7 +140,7 @@ class DescriptorTests {
             stderr = Redirect.Pipe
         }
         val job = launch(Dispatchers.Default) { proc.communicate() }
-        delay(500)
+        delay(500.milliseconds)
         withTimeout(10.seconds) { job.cancelAndJoin() }
         assertFalse(proc.isAlive)
         assertNotNull(proc.exitCode)
@@ -182,7 +183,7 @@ class DescriptorTests {
     fun pipesAreNotInheritedByOtherChildren() = runBlocking<Unit> {
         val holder = shell("exec sleep 30") { stdout = Redirect.Pipe }
         try {
-            val fd = holder.stdoutFd
+            val fd = holder.stdoutPipeFd
             val inode = memScoped {
                 val st = alloc<stat>()
                 check(fstat(fd, st.ptr) == 0)
@@ -208,11 +209,7 @@ class DescriptorTests {
         val path = Path("build", "redirect-mode.txt")
         if (SystemFileSystem.exists(path)) SystemFileSystem.delete(path)
         shell("echo hi") { stdout = Redirect.Write(path.toString()) }.waitFor()
-        val mode = memScoped {
-            val st = alloc<stat>()
-            check(stat(path.toString(), st.ptr) == 0)
-            st.st_mode.toInt()
-        }
+        val mode = fileMode(path.toString())
         SystemFileSystem.delete(path)
         assertEquals(0, mode and "7000".toInt(8), "Special bits set: ${mode.toString(8)}")
         assertEquals(0, mode and "111".toInt(8), "Execute bits set: ${mode.toString(8)}")
@@ -314,7 +311,7 @@ class DescriptorTests {
             stderr = Redirect.Pipe
         }
         val job = launch(Dispatchers.Default) { proc.communicate() }
-        delay(500)
+        delay(500.milliseconds)
         withTimeout(10.seconds) { job.cancelAndJoin() }
         assertFalse(proc.isAlive)
     }

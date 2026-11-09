@@ -77,5 +77,3 @@ public actual object Environment : AbstractMap<String, String>(), Map<String, St
     public actual val caseInsensitive: Boolean
         get() = false // never on linux
 }
-
-internal fun Map<String, String>.toEnviron() = map { "${it.key}=${it.value}" }

@@ -306,7 +306,7 @@ class ProcessTests {
             while (!stdoutSource.exhausted()) {
                 stdoutSource.readLine()?.let(output::add)
                 println(output.last())
-                delay(1000)
+                delay(1.seconds)
             }
         }
 

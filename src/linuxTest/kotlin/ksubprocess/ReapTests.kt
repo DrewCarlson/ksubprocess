@@ -11,6 +11,7 @@ import kotlin.native.runtime.GC
 import kotlin.native.runtime.NativeRuntimeApi
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.time.Duration.Companion.milliseconds
 
 class ReapTests {
 
@@ -34,13 +35,13 @@ class ReapTests {
     @OptIn(NativeRuntimeApi::class)
     private suspend fun collect() {
         GC.collect()
-        delay(500)
+        delay(500.milliseconds)
     }
 
     @Test
     fun abandonedProcessesAreReaped() = runBlocking {
         startAndDrop("exit 0")
-        delay(300)
+        delay(300.milliseconds)
         collect()
         assertEquals(0, zombieChildren())
     }
@@ -49,7 +50,7 @@ class ReapTests {
     fun processesAbandonedWhileRunningAreReapedLater() = runBlocking {
         startAndDrop("sleep 0.3")
         collect()
-        delay(500)
+        delay(500.milliseconds)
         Process { arg("/bin/sh"); arg("-c"); arg("exit 0") }.waitFor()
         assertEquals(0, zombieChildren())
     }

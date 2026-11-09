@@ -43,7 +43,7 @@ public expect object Environment : Map<String, String> {
 /**
  * Check if the given string is a valid environment key.
  */
-@Suppress("unused")
+@Suppress("UnusedReceiverParameter")
 internal fun Environment.validateKey(key: String) {
     require(!('=' in key || '\u0000' in key)) { "Invalid environment key: $key" }
 }
@@ -51,7 +51,7 @@ internal fun Environment.validateKey(key: String) {
 /**
  * Check if the given string is a valid environment value.
  */
-@Suppress("unused")
+@Suppress("UnusedReceiverParameter")
 internal fun Environment.validateValue(value: String) {
     require('\u0000' !in value) { "Invalid environment value: $value" }
 }

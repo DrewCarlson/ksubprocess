@@ -17,6 +17,7 @@ package ksubprocess
 
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.future.await
 import kotlinx.io.Sink
 import kotlinx.io.Source
 import kotlinx.io.asSink
@@ -93,7 +94,8 @@ public actual class Process actual constructor(public actual val args: ProcessAr
         }
 
     public actual suspend fun waitFor(): Int {
-        return impl.waitFor()
+        impl.onExit().await()
+        return impl.exitValue()
     }
 
     public actual suspend fun waitFor(timeout: Duration): Int? {

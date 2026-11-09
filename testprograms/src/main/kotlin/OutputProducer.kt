@@ -1,5 +1,6 @@
 import kotlinx.coroutines.delay
 import kotlin.system.exitProcess
+import kotlin.time.Duration.Companion.milliseconds
 
 suspend fun main(args: Array<String>) {
     val lines = requireNotNull(args.getOrNull(0)?.toIntOrNull()) {
@@ -8,7 +9,7 @@ suspend fun main(args: Array<String>) {
 
     repeat(lines) { i ->
         println("Output line $i: This is a test line with some content")
-        delay(5)
+        delay(5.milliseconds)
     }
     
     exitProcess(0)

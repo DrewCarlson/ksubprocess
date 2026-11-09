@@ -39,7 +39,7 @@ jobs:
 
       - name: Test Apple Targets
         if: ${{ startsWith(matrix.os, 'macos') }}
-        run: ./gradlew macosX64Test macosArm64Test
+        run: ./gradlew macosArm64Test
 
       - name: Test Linux Target
         if: ${{ startsWith(matrix.os, 'ubuntu') }}

@@ -1,6 +1,5 @@
 // Klib ABI Dump
-// Targets: [linuxArm64, linuxX64, macosArm64, macosX64, mingwX64.windows]
-// Alias: apple => [macosArm64, macosX64]
+// Targets: [linuxArm64, linuxX64, macosArm64, mingwX64.windows]
 // Alias: linux => [linuxArm64, linuxX64]
 // Rendering settings:
 // - Signature version: 2
@@ -198,7 +197,7 @@ final inline fun ksubprocess/ProcessArguments(kotlin/Function1<ksubprocess/Proce
 final suspend fun (ksubprocess/Process).ksubprocess/communicate(kotlin/String = ..., kotlin.time/Duration? = ..., kotlin.time/Duration? = ...): ksubprocess/CommunicateResult // ksubprocess/communicate|communicate@ksubprocess.Process(kotlin.String;kotlin.time.Duration?;kotlin.time.Duration?){}[0]
 final suspend fun ksubprocess/exec(kotlin/Function1<ksubprocess/ExecArgumentsBuilder, kotlin/Unit>): ksubprocess/CommunicateResult // ksubprocess/exec|exec(kotlin.Function1<ksubprocess.ExecArgumentsBuilder,kotlin.Unit>){}[0]
 
-// Targets: [apple, linux]
+// Targets: [linux, macosArm64]
 sealed class ksubprocess.io/PosixException : kotlin/Exception { // ksubprocess.io/PosixException|null[0]
     final val errno // ksubprocess.io/PosixException.errno|{}errno[0]
         final fun <get-errno>(): kotlin/Int // ksubprocess.io/PosixException.errno.<get-errno>|<get-errno>(){}[0]
@@ -290,7 +289,7 @@ final val ksubprocess/executablePaths // ksubprocess/executablePaths|{}executabl
 // Targets: [linux]
 final fun ksubprocess/findExecutable(kotlin/String): kotlin/String? // ksubprocess/findExecutable|findExecutable(kotlin.String){}[0]
 
-// Targets: [apple]
+// Targets: [macosArm64]
 final object ksubprocess/Environment : kotlin.collections/Map<kotlin/String, kotlin/String> { // ksubprocess/Environment|null[0]
     final val caseInsensitive // ksubprocess/Environment.caseInsensitive|{}caseInsensitive[0]
         final fun <get-caseInsensitive>(): kotlin/Boolean // ksubprocess/Environment.caseInsensitive.<get-caseInsensitive>|<get-caseInsensitive>(){}[0]

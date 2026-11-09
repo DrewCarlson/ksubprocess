@@ -23,7 +23,6 @@ import kotlinx.io.Source
 import ksubprocess.io.*
 import platform.Foundation.*
 import platform.posix.*
-import kotlin.native.concurrent.*
 import kotlin.time.*
 import kotlin.time.Duration.Companion.milliseconds
 

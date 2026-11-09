@@ -24,5 +24,3 @@ public actual object Environment : Map<String, String> by NSProcessInfo.processI
 
     public actual val caseInsensitive: Boolean = false
 }
-
-internal fun Map<String, String>.toEnviron() = map { "${it.key}=${it.value}" }

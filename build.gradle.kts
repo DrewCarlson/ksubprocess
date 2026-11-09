@@ -18,7 +18,6 @@ kotlin {
     abiValidation {}
     jvmToolchain(11)
     jvm()
-    macosX64()
     macosArm64()
     mingwX64("windows")
     configure(listOf(linuxX64(), linuxArm64())) {

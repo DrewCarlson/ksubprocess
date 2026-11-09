@@ -7,7 +7,7 @@ fun main() {
     while (true) {
         val line = try {
             readlnOrNull() ?: break
-        } catch (e: IOException) {
+        } catch (_: IOException) {
             break
         }
         println(line)
